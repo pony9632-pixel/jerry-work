@@ -310,6 +310,60 @@ html,body{height:100%;background:var(--bg);color:var(--ink);
 #fileInput,#importInput{display:none}
 button{-webkit-appearance:none;font-family:inherit}
 .page-scroll::-webkit-scrollbar{width:0}
+
+/* ─── Manual ─── */
+.manual-entry{display:flex;align-items:center;gap:14px;padding:16px 18px;
+  background:rgba(255,255,255,.8);backdrop-filter:blur(20px);
+  border-radius:24px;margin:0 0 14px;cursor:pointer;
+  border:1.5px solid rgba(255,255,255,.95);
+  box-shadow:0 8px 24px rgba(14,37,71,.08)}
+.manual-entry:active{transform:scale(.98)}
+.manual-icon{width:44px;height:44px;border-radius:14px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--main),var(--accent-light));
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  box-shadow:0 4px 12px rgba(58,141,255,.4)}
+.manual-text h3{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:3px}
+.manual-text p{font-size:12px;color:var(--ink2);font-weight:500}
+.manual-arrow{margin-left:auto;color:var(--ink3);font-size:18px}
+
+#manualOverlay{position:fixed;inset:0;background:var(--bg);z-index:8000;
+  display:none;flex-direction:column;overflow:hidden}
+#manualOverlay.show{display:flex}
+.manual-header{display:flex;align-items:center;gap:12px;
+  padding:14px 20px;padding-top:max(14px,calc(env(safe-area-inset-top)+6px));
+  background:rgba(255,255,255,.85);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--line);flex-shrink:0}
+.manual-header h2{flex:1;text-align:center;font-size:16px;font-weight:700}
+.manual-close{border:none;background:rgba(58,141,255,.1);color:var(--main-deep);
+  font-size:14px;font-weight:700;padding:8px 16px;border-radius:999px;cursor:pointer;font-family:inherit}
+.manual-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px}
+.manual-body::-webkit-scrollbar{width:0}
+.m-section{background:rgba(255,255,255,.8);border-radius:20px;padding:20px;margin-bottom:14px;
+  border:1.5px solid rgba(255,255,255,.95);box-shadow:0 6px 20px rgba(14,37,71,.07)}
+.m-chip{display:inline-block;background:linear-gradient(135deg,var(--main),var(--accent-light));
+  color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;margin-bottom:8px}
+.m-title{font-size:18px;font-weight:800;color:var(--ink);margin-bottom:6px;line-height:1.2}
+.m-title em{color:var(--main-deep);font-style:normal}
+.m-desc{font-size:13px;color:var(--ink2);line-height:1.65;font-weight:500}
+.m-steps{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.m-step{display:flex;gap:12px;align-items:flex-start}
+.m-num{width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--main),var(--accent-light));
+  color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.m-step-body h4{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:3px}
+.m-step-body p{font-size:12px;color:var(--ink2);line-height:1.6}
+.m-tools{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.m-tool{background:rgba(58,141,255,.06);border-radius:14px;padding:12px}
+.m-tool h4{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.m-tool p{font-size:11px;color:var(--ink2);line-height:1.55}
+.m-tips{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.m-tip{display:flex;gap:10px;align-items:flex-start;padding:10px;
+  background:rgba(58,141,255,.06);border-radius:12px}
+.m-tip-icon{font-size:16px;flex-shrink:0;line-height:1.4}
+.m-tip p{font-size:12px;color:var(--ink2);line-height:1.6;font-weight:500}
+.m-tip strong{color:var(--ink);font-weight:700}
+.m-kbd{display:inline-block;background:#fff;border:1px solid var(--line);
+  border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700;color:var(--ink)}
 </style>
 </head>
 <body>
@@ -323,9 +377,22 @@ button{-webkit-appearance:none;font-family:inherit}
       <div class="nav-greet">從網頁抓畫面</div>
       <div class="nav-title">網頁<em>截圖</em></div>
     </div>
-    <span class="nav-sub" id="importCount">0 / 5<span class="ver-badge">v1.3</span></span>
+    <span class="nav-sub" id="importCount">0 / 5<span class="ver-badge">v1.5</span></span>
   </div>
   <div class="page-scroll">
+    <div class="manual-entry" onclick="openManual()">
+      <div class="manual-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2z"/>
+          <path d="M12 16v-4M12 8h.01"/>
+        </svg>
+      </div>
+      <div class="manual-text">
+        <h3>使用說明書</h3>
+        <p>三步驟完成截圖 · 拍攝 · 匯出</p>
+      </div>
+      <div class="manual-arrow">›</div>
+    </div>
     <div class="workflow-card">
       <div class="workflow-step">
         <div class="step-num">1</div>
@@ -430,9 +497,17 @@ button{-webkit-appearance:none;font-family:inherit}
     </button>
     <button class="shutter" onclick="capturePhoto()"><div class="shutter-inner"></div></button>
     <button class="cam-btn" onclick="flipCamera()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M1 4v6h6M23 20v-6h-6"/>
-        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <!-- 相機機身 -->
+        <rect x="2" y="6" width="20" height="14" rx="2.5"/>
+        <!-- 鏡頭 -->
+        <circle cx="12" cy="13" r="3.5"/>
+        <!-- 頂部凸起 -->
+        <path d="M8 6l1.5-2.5h5L16 6"/>
+        <!-- 翻轉箭頭（左右） -->
+        <path d="M5.5 2.5 L3 5 L5.5 7.5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18.5 2.5 L21 5 L18.5 7.5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 5 H21" stroke-width="1.4" stroke-dasharray="2 2"/>
       </svg>
     </button>
   </div>
@@ -496,6 +571,16 @@ button{-webkit-appearance:none;font-family:inherit}
       </div>
       <input type="range" class="size-slider" id="sizeSlider" min="2" max="60" value="8" oninput="updateSize(+this.value)">
       <span class="size-label" id="sizeLabel">8</span>
+    </div>
+
+    <div class="tool-row" id="boRow">
+      <div style="flex:1">
+        <div class="confirm-hint">拖拉角點縮放，拖拉中央移動，完成後確認</div>
+        <div class="confirm-btn-row">
+          <button class="btn-cancel" onclick="cancelBlackout()">取消</button>
+          <button class="btn-ok"     onclick="confirmBlackout()">確認塗色</button>
+        </div>
+      </div>
     </div>
 
     <div class="tool-row" id="cropRow">
@@ -668,7 +753,7 @@ const st = {
   brushSize: 8,
   history: [],
   isDrawing: false, lx:0, ly:0,
-  boStart: null,
+  boStart: null, boPending: null, boDrag: null, boDragLast: null,
   cropStart: null, cropEnd: null,
   perspHandles: [],
   activeHandle: -1,
@@ -912,14 +997,17 @@ function closeEditor() {
 // ─── Tools ───
 function setTool(tool) {
   st.tool = tool; st.boStart = null;
+  // cancel any pending blackout when switching away
+  if (tool !== 'blackout' && st.boPending) { restoreLast(); st.boPending = null; st.boDrag = null; }
   ['brush','blackout','crop','persp'].forEach(t =>
     document.getElementById('btn'+cap(t)).classList.toggle('active', t === tool));
-  document.getElementById('optRow') .style.display = (tool==='brush'||tool==='blackout') ? 'flex' : 'none';
-  document.getElementById('cropRow').style.display = tool === 'crop'  ? 'flex' : 'none';
-  document.getElementById('perspRow').style.display= tool === 'persp' ? 'flex' : 'none';
+  document.getElementById('optRow') .style.display = tool === 'brush'   ? 'flex' : 'none';
+  document.getElementById('boRow')  .style.display = 'none';
+  document.getElementById('cropRow').style.display = tool === 'crop'    ? 'flex' : 'none';
+  document.getElementById('perspRow').style.display= tool === 'persp'   ? 'flex' : 'none';
   document.getElementById('sizeSlider').style.display = tool === 'brush' ? '' : 'none';
   document.getElementById('sizeLabel').style.display  = tool === 'brush' ? '' : 'none';
-  if (tool === 'brush' || tool === 'blackout') {
+  if (tool === 'brush') {
     const col = st.colors[tool];
     document.getElementById('colorPicker').value = col;
     document.getElementById('colorSwatch').style.background = col;
@@ -986,7 +1074,14 @@ canvas.addEventListener('pointerdown', e => {
     ctx.beginPath(); ctx.arc(p.x, p.y, st.brushSize/2, 0, Math.PI*2);
     ctx.fillStyle = st.colors.brush; ctx.fill();
   } else if (st.tool === 'blackout') {
-    st.boStart = p;
+    if (st.boPending) {
+      // hit-test handles or body for move/resize
+      const hit = boHitTest(p);
+      if (hit) { st.boDrag = hit; st.boDragLast = p; }
+      else { cancelBlackout(); st.boStart = p; } // clicked outside → start new rect
+    } else {
+      st.boStart = p;
+    }
   } else if (st.tool === 'crop') {
     st.cropStart = p; st.cropEnd = null;
   } else if (st.tool === 'persp') {
@@ -1002,10 +1097,17 @@ canvas.addEventListener('pointermove', e => {
     ctx.strokeStyle = st.colors.brush; ctx.lineWidth = st.brushSize;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
     st.lx = p.x; st.ly = p.y;
-  } else if (st.tool === 'blackout' && st.boStart) {
-    restoreLast();
-    const r = mkRect(st.boStart, p);
-    ctx.fillStyle = st.colors.blackout; ctx.fillRect(r.x, r.y, r.w, r.h);
+  } else if (st.tool === 'blackout') {
+    if (st.boStart) {
+      restoreLast();
+      const r = mkRect(st.boStart, p);
+      ctx.fillStyle = st.colors.blackout; ctx.fillRect(r.x, r.y, r.w, r.h);
+    } else if (st.boPending && st.boDrag) {
+      const dx = p.x - st.boDragLast.x, dy = p.y - st.boDragLast.y;
+      st.boDragLast = p;
+      boApplyDrag(dx, dy);
+      drawBlackoutPending();
+    }
   } else if (st.tool === 'crop' && st.cropStart) {
     st.cropEnd = p; drawCropOverlay();
   } else if (st.tool === 'persp' && st.activeHandle >= 0) {
@@ -1019,12 +1121,18 @@ canvas.addEventListener('pointerup', e => {
   const p = getPos(e);
   if (st.tool === 'brush' && st.isDrawing) {
     st.isDrawing = false; saveHist();
-  } else if (st.tool === 'blackout' && st.boStart) {
-    const r = mkRect(st.boStart, p);
-    if (r.w > 3 && r.h > 3) {
-      ctx.fillStyle = st.colors.blackout; ctx.fillRect(r.x, r.y, r.w, r.h); saveHist();
+  } else if (st.tool === 'blackout') {
+    if (st.boStart) {
+      const r = mkRect(st.boStart, p);
+      st.boStart = null;
+      if (r.w > 8 && r.h > 8) {
+        // enter pending / adjustable mode
+        st.boPending = r;
+        drawBlackoutPending();
+        document.getElementById('boRow').style.display = 'flex';
+      }
     }
-    st.boStart = null;
+    st.boDrag = null;
   } else if (st.tool === 'crop' && st.cropStart) {
     st.cropEnd = p; drawCropOverlay();
   } else if (st.tool === 'persp') {
@@ -1034,12 +1142,96 @@ canvas.addEventListener('pointerup', e => {
 
 canvas.addEventListener('pointerleave', () => {
   if (st.tool === 'brush' && st.isDrawing) { st.isDrawing = false; saveHist(); }
+  if (st.tool === 'blackout') st.boDrag = null;
   if (st.tool === 'persp') st.activeHandle = -1;
 });
 
 function clampToCanvas(p) {
   return { x: Math.max(0, Math.min(canvas.width,  p.x)),
            y: Math.max(0, Math.min(canvas.height, p.y)) };
+}
+
+// ─── Blackout pending helpers ───
+function drawBlackoutPending() {
+  if (!st.boPending) return;
+  restoreLast();
+  const {x, y, w, h} = st.boPending;
+  ctx.save();
+  ctx.fillStyle = st.colors.blackout;
+  ctx.fillRect(x, y, w, h);
+  // dashed blue border
+  ctx.strokeStyle = 'rgba(58,141,255,.95)';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([7, 4]);
+  ctx.strokeRect(x, y, w, h);
+  ctx.setLineDash([]);
+  // corner + edge-mid handles
+  const HR = 10; // handle radius
+  const handles = [
+    [x,y],[x+w,y],[x,y+h],[x+w,y+h],
+    [x+w/2,y],[x+w/2,y+h],[x,y+h/2],[x+w,y+h/2]
+  ];
+  handles.forEach(([hx,hy]) => {
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.strokeStyle = 'rgba(58,141,255,.95)'; ctx.lineWidth = 2.5; ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function boHitTest(p) {
+  if (!st.boPending) return null;
+  const {x, y, w, h} = st.boPending;
+  const R = 22;
+  const handles = [
+    ['nw', x,     y    ], ['ne', x+w,   y    ],
+    ['sw', x,     y+h  ], ['se', x+w,   y+h  ],
+    ['n',  x+w/2, y    ], ['s',  x+w/2, y+h  ],
+    ['w',  x,     y+h/2], ['e',  x+w,   y+h/2]
+  ];
+  for (const [name, hx, hy] of handles)
+    if (Math.hypot(p.x-hx, p.y-hy) < R) return name;
+  if (p.x >= x && p.x <= x+w && p.y >= y && p.y <= y+h) return 'move';
+  return null;
+}
+
+function boApplyDrag(dx, dy) {
+  if (!st.boPending) return;
+  const MIN = 10;
+  let {x, y, w, h} = st.boPending;
+  const d = st.boDrag;
+  if (d === 'move') { x += dx; y += dy; }
+  else {
+    if (d==='nw'||d==='w'||d==='sw') { x += dx; w -= dx; }
+    if (d==='ne'||d==='e'||d==='se') { w += dx; }
+    if (d==='nw'||d==='n'||d==='ne') { y += dy; h -= dy; }
+    if (d==='sw'||d==='s'||d==='se') { h += dy; }
+    // flip if dragged past opposite edge
+    if (w < MIN) { if (d.includes('w')) x = x+w-MIN; w = MIN; }
+    if (h < MIN) { if (d.includes('n')) y = y+h-MIN; h = MIN; }
+  }
+  // clamp to canvas bounds
+  x = Math.max(0, Math.min(canvas.width  - MIN, x));
+  y = Math.max(0, Math.min(canvas.height - MIN, y));
+  w = Math.max(MIN, Math.min(canvas.width  - x, w));
+  h = Math.max(MIN, Math.min(canvas.height - y, h));
+  st.boPending = {x, y, w, h};
+}
+
+function confirmBlackout() {
+  if (!st.boPending) return;
+  restoreLast();
+  const {x, y, w, h} = st.boPending;
+  ctx.fillStyle = st.colors.blackout;
+  ctx.fillRect(x, y, w, h);
+  st.boPending = null; st.boDrag = null;
+  saveHist();
+  document.getElementById('boRow').style.display = 'none';
+}
+
+function cancelBlackout() {
+  if (st.boPending) { restoreLast(); st.boPending = null; st.boDrag = null; }
+  document.getElementById('boRow').style.display = 'none';
 }
 
 function drawCropOverlay() {
@@ -1239,6 +1431,16 @@ function showToast(msg, inEditor = false) {
 }
 
 // ═══════════════════════════════════════════════
+//  MANUAL
+// ═══════════════════════════════════════════════
+function openManual() {
+  document.getElementById('manualOverlay').classList.add('show');
+}
+function closeManual() {
+  document.getElementById('manualOverlay').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
 setGreeting();
@@ -1246,5 +1448,158 @@ setInterval(setGreeting, 60 * 1000);
 renderScan();
 renderImport();
 </script>
+
+<!-- ══ Manual Overlay ══ -->
+<div id="manualOverlay">
+  <div class="manual-header">
+    <button class="manual-close" onclick="closeManual()">✕ 關閉</button>
+    <h2>📖 使用說明書</h2>
+    <div style="width:60px"></div>
+  </div>
+  <div class="manual-body">
+
+    <!-- 封面 -->
+    <div class="m-section">
+      <div class="m-chip">簡介</div>
+      <div class="m-title">從截圖到匯出<br><em>三步驟完成全部流程</em></div>
+      <div class="m-desc">截圖 → 掃描 → 匯出，在 iPad / iPhone 上操作，最多 10 張掃描、最多 5 張截圖。</div>
+    </div>
+
+    <!-- 三步驟流程 -->
+    <div class="m-section">
+      <div class="m-chip">流程總覽</div>
+      <div class="m-title">三個分頁完成全部</div>
+      <div class="m-steps">
+        <div class="m-step">
+          <div class="m-num">1</div>
+          <div class="m-step-body">
+            <h4>截圖</h4>
+            <p>開啟目標網站，用 iPad/iPhone 截圖後回到此 App 自動匯入。</p>
+          </div>
+        </div>
+        <div class="m-step">
+          <div class="m-num">2</div>
+          <div class="m-step-body">
+            <h4>掃描拍攝</h4>
+            <p>開啟相機，對準實體照片拍攝，支援透視矯正與手動裁切。</p>
+          </div>
+        </div>
+        <div class="m-step">
+          <div class="m-num">3</div>
+          <div class="m-step-body">
+            <h4>匯出儲存</h4>
+            <p>切換到「匯出」分頁，一鍵全部儲存或單張分開儲存到相簿。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第一步：截圖 -->
+    <div class="m-section">
+      <div class="m-chip">第一步</div>
+      <div class="m-title">📱 網頁截圖</div>
+      <div class="m-desc">
+        點「在 Safari 開啟」→ 截圖 → 回到此 App。<br>
+        <span class="m-kbd">電源</span> + <span class="m-kbd">音量＋</span> 同時按下即可截圖。<br>
+        截圖最多 <strong>5 張</strong>，超過請先匯出再繼續。
+      </div>
+    </div>
+
+    <!-- 第二步：拍攝 -->
+    <div class="m-section">
+      <div class="m-chip">第二步</div>
+      <div class="m-title">📷 拍攝照片</div>
+      <div class="m-desc">點下方「拍攝照片」按鈕開啟相機。</div>
+      <div class="m-steps" style="margin-top:12px">
+        <div class="m-step">
+          <div class="m-num">①</div>
+          <div class="m-step-body">
+            <h4>對準、拍攝</h4>
+            <p>將實體照片放在平坦桌面，按快門鍵拍攝，最多 10 張。</p>
+          </div>
+        </div>
+        <div class="m-step">
+          <div class="m-num">②</div>
+          <div class="m-step-body">
+            <h4>切換鏡頭</h4>
+            <p>點右上方翻轉按鈕可切換前 / 後鏡頭。</p>
+          </div>
+        </div>
+        <div class="m-step">
+          <div class="m-num">③</div>
+          <div class="m-step-body">
+            <h4>從相簿匯入</h4>
+            <p>點縮圖區的「＋」格可從相簿選取已拍好的照片。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 編輯器工具 -->
+    <div class="m-section">
+      <div class="m-chip">編輯工具</div>
+      <div class="m-title">四種工具</div>
+      <div class="m-tools">
+        <div class="m-tool">
+          <h4>✏️ 畫筆</h4>
+          <p>自由塗寫，可調整顏色與筆刷大小，用來遮蓋文字或標記。</p>
+        </div>
+        <div class="m-tool">
+          <h4>⬛ 塗色</h4>
+          <p>拖拉畫出矩形色塊，適合快速遮住大面積區域。</p>
+        </div>
+        <div class="m-tool">
+          <h4>✂️ 裁切</h4>
+          <p>拖拉選取範圍後確認，保留選取區域並重置編輯歷史。</p>
+        </div>
+        <div class="m-tool">
+          <h4>⬡ 矯正</h4>
+          <p>拖動四個角點調整透視，適合修正拍攝角度偏斜的照片。</p>
+        </div>
+      </div>
+      <div class="m-desc" style="margin-top:12px">
+        <strong>旋轉 90°</strong>：每按一次順時針轉 90 度。<br>
+        <strong>復原</strong>：最多可回溯 40 步操作。
+      </div>
+    </div>
+
+    <!-- 第三步：匯出 -->
+    <div class="m-section">
+      <div class="m-chip">第三步</div>
+      <div class="m-title">💾 匯出儲存</div>
+      <div class="m-desc">
+        切換到「匯出」分頁，點<strong>「全部儲存到相簿」</strong>一次儲存所有照片，<br>
+        或點單張卡片右上角的儲存按鈕單獨儲存。<br>
+        儲存後系統會跳出通知確認已存入相簿。
+      </div>
+    </div>
+
+    <!-- 小提醒 -->
+    <div class="m-section">
+      <div class="m-chip">注意事項</div>
+      <div class="m-title">小提醒</div>
+      <div class="m-tips">
+        <div class="m-tip">
+          <div class="m-tip-icon">📐</div>
+          <p><strong>上限</strong>：掃描最多 10 張，截圖最多 5 張，超過請先匯出騰空。</p>
+        </div>
+        <div class="m-tip">
+          <div class="m-tip-icon">✂️</div>
+          <p><strong>裁切會重置歷史</strong>：裁切確認後，復原步驟會清空，裁切前請確認完成其他編輯。</p>
+        </div>
+        <div class="m-tip">
+          <div class="m-tip-icon">💾</div>
+          <p><strong>資料只存在裝置</strong>：關閉瀏覽器分頁後資料不會保留，請在同一次操作中完成匯出。</p>
+        </div>
+        <div class="m-tip">
+          <div class="m-tip-icon">🔒</div>
+          <p><strong>隱私安全</strong>：所有影像處理在本機完成，不上傳任何伺服器。</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>
