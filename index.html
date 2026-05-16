@@ -174,19 +174,9 @@ html,body{height:100%;background:var(--bg);color:var(--ink);
   font-size:13px;font-weight:700;backdrop-filter:blur(12px);
   border:1px solid rgba(255,255,255,.2)}
 
-/* ─── Face suggestion boxes (in editor) ─── */
-.face-box{position:absolute;border:2px dashed var(--main-deep);border-radius:6px;
-  background:rgba(30,111,230,.12);pointer-events:auto;cursor:pointer;z-index:15}
-.face-box-label{position:absolute;top:-24px;left:50%;transform:translateX(-50%);
-  background:var(--main-deep);color:#fff;font-size:11px;font-weight:700;
-  padding:3px 8px;border-radius:8px;white-space:nowrap;font-family:inherit}
-.face-all-btn{position:absolute;top:10px;right:10px;z-index:20;border:none;
-  background:var(--main-deep);color:#fff;font-size:12px;font-weight:700;
-  padding:8px 14px;border-radius:999px;cursor:pointer;
-  box-shadow:0 4px 12px rgba(30,111,230,.45);font-family:inherit}
 
 /* ─── Editor ─── */
-#editorScreen{background:var(--bg);position:relative}
+#editorScreen{background:var(--bg)}
 .editor-top{display:flex;align-items:center;gap:8px;padding:12px 16px;
   padding-top:max(12px,calc(env(safe-area-inset-top) + 6px));
   flex-shrink:0;position:relative;z-index:3}
@@ -200,9 +190,8 @@ html,body{height:100%;background:var(--bg);color:var(--ink);
 
 .canvas-wrap{flex:1;position:relative;overflow:hidden;
   margin:14px 18px;border-radius:24px;
-  background:rgba(255,255,255,.5);backdrop-filter:blur(20px);
-  border:1.5px solid rgba(255,255,255,.9);
-  box-shadow:0 10px 30px rgba(14,37,71,.1);
+  background:#1a1a2e;
+  box-shadow:0 10px 30px rgba(14,37,71,.25);
   display:flex;align-items:center;justify-content:center;z-index:2}
 #editorCanvas{position:absolute;top:0;left:0;touch-action:none}
 
@@ -334,7 +323,7 @@ button{-webkit-appearance:none;font-family:inherit}
       <div class="nav-greet">從網頁抓畫面</div>
       <div class="nav-title">網頁<em>截圖</em></div>
     </div>
-    <span class="nav-sub" id="importCount">0 / 5<span class="ver-badge">v1.2</span></span>
+    <span class="nav-sub" id="importCount">0 / 5<span class="ver-badge">v1.3</span></span>
   </div>
   <div class="page-scroll">
     <div class="workflow-card">
@@ -432,7 +421,6 @@ button{-webkit-appearance:none;font-family:inherit}
 <!-- ══ Camera ══ -->
 <div id="cameraScreen" class="screen">
   <video id="cameraVideo" autoplay playsinline muted></video>
-  <canvas id="faceOverlay"></canvas>
   <div class="cam-count" id="camCount">0 / 10</div>
   <div class="camera-bar">
     <button class="cam-btn" onclick="closeCamera()">
@@ -485,17 +473,19 @@ button{-webkit-appearance:none;font-family:inherit}
           <polygon points="4,20 20,20 17,4 7,4"/>
         </svg>矯正
       </button>
-      <button class="icon-btn rotate" onclick="rotate90()" title="旋轉 90°">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <button class="icon-btn rotate" onclick="rotate90()" title="旋轉 90°" style="flex-direction:column;gap:1px;font-size:9px;font-weight:700;width:auto;padding:0 8px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <path d="M21 2v6h-6"/>
           <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
           <path d="M3 12a9 9 0 0 0 9 9 9 9 0 0 0 6-2.3"/>
         </svg>
+        90°
       </button>
-      <button class="icon-btn undo" onclick="undo()" title="復原">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <button class="icon-btn undo" onclick="undo()" title="復原" style="flex-direction:column;gap:1px;font-size:9px;font-weight:700;width:auto;padding:0 8px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <path d="M3 7v6h6M3 13A9 9 0 1 0 5.6 5.6"/>
         </svg>
+        復原
       </button>
     </div>
 
@@ -683,10 +673,6 @@ const st = {
   perspHandles: [],
   activeHandle: -1,
   stream: null, facing: 'environment',
-  // face detection
-  faceModelLoaded: false,
-  faceDetectTimer: null,
-  lastFaces: [],
 };
 
 // ═══════════════════════════════════════════════
@@ -812,77 +798,13 @@ async function openCamera() {
     st.stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: st.facing, width:{ideal:3840}, height:{ideal:2160} }, audio: false
     });
-    const video = document.getElementById('cameraVideo');
-    video.srcObject = st.stream;
+    document.getElementById('cameraVideo').srcObject = st.stream;
     document.getElementById('camCount').textContent = `${st.scanned.length} / ${MAX}`;
     showScreen('cameraScreen');
-    startFaceDetection(video);
   } catch { document.getElementById('fileInput').click(); }
 }
 
-async function startFaceDetection(video) {
-  if (!window.faceapi) {
-    await new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
-      s.onload = resolve; s.onerror = reject;
-      document.head.appendChild(s);
-    });
-  }
-  if (!st.faceModelLoaded) {
-    showToast('人臉偵測載入中…');
-    try {
-      await faceapi.nets.ssdMobilenetv1.loadFromUri(
-        'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights'
-      );
-      st.faceModelLoaded = true;
-    } catch { return; }
-  }
-  const overlay = document.getElementById('faceOverlay');
-  const octx = overlay.getContext('2d');
-  st.faceDetectTimer = setInterval(async () => {
-    if (!document.getElementById('cameraScreen').classList.contains('active')) {
-      clearInterval(st.faceDetectTimer); return;
-    }
-    if (video.readyState < 2) return;
-    overlay.width = video.clientWidth;
-    overlay.height = video.clientHeight;
-    const detections = await faceapi.detectAllFaces(
-      video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 })
-    );
-    octx.clearRect(0, 0, overlay.width, overlay.height);
-    const scaleX = video.clientWidth / video.videoWidth;
-    const scaleY = video.clientHeight / video.videoHeight;
-    st.lastFaces = detections.map(d => ({
-      x: d.box.x / video.videoWidth,
-      y: d.box.y / video.videoHeight,
-      w: d.box.width / video.videoWidth,
-      h: d.box.height / video.videoHeight,
-    }));
-    detections.forEach(d => {
-      const x = d.box.x * scaleX, y = d.box.y * scaleY;
-      const w = d.box.width * scaleX, h = d.box.height * scaleY;
-      octx.strokeStyle = '#1E6FE6';
-      octx.lineWidth = 2.5;
-      octx.setLineDash([6, 4]);
-      octx.strokeRect(x, y, w, h);
-      octx.fillStyle = 'rgba(30,111,230,0.12)';
-      octx.fillRect(x, y, w, h);
-      octx.fillStyle = '#1E6FE6';
-      octx.fillRect(x, y - 22, 52, 20);
-      octx.fillStyle = '#fff';
-      octx.font = 'bold 12px sans-serif';
-      octx.textAlign = 'left';
-      octx.fillText('人臉', x + 6, y - 7);
-    });
-  }, 700);
-}
-
 function closeCamera() {
-  clearInterval(st.faceDetectTimer); st.faceDetectTimer = null;
-  st.lastFaces = [];
-  const overlay = document.getElementById('faceOverlay');
-  overlay.getContext('2d').clearRect(0, 0, overlay.width, overlay.height);
   stopStream(); switchTab('scan');
 }
 function stopStream() { st.stream?.getTracks().forEach(t => t.stop()); st.stream = null; }
@@ -901,17 +823,16 @@ function capturePhoto() {
   const c = document.createElement('canvas');
   c.width = v.videoWidth; c.height = v.videoHeight;
   c.getContext('2d').drawImage(v, 0, 0);
-  st.scanned.push({ url: compressCanvas(c), faces: [...st.lastFaces] });
+  st.scanned.push({ url: compressCanvas(c) });
   document.getElementById('camCount').textContent = `${st.scanned.length} / ${MAX}`;
-  const faceHint = st.lastFaces.length ? `，偵測到 ${st.lastFaces.length} 張人臉` : '';
-  showToast(`已拍攝第 ${st.scanned.length} 張${faceHint}`);
+  showToast(`已拍攝第 ${st.scanned.length} 張`);
   if (st.scanned.length >= MAX) closeCamera();
 }
 
 function handleCamera(input) {
   Array.from(input.files).slice(0, MAX - st.scanned.length).forEach(f => {
     const r = new FileReader();
-    r.onload = e => { st.scanned.push({url:e.target.result, faces:[]}); renderScan(); };
+    r.onload = e => { st.scanned.push({url:e.target.result}); renderScan(); };
     r.readAsDataURL(f);
   });
   input.value = '';
@@ -951,15 +872,15 @@ function openEditor(src, idx) {
   document.getElementById('editorTitle').textContent =
     `${src==='scan'?'掃描':'匯入'} ${idx+1}`;
   showScreen('editorScreen');
-  clearFaceSuggestions();
   const arr = src === 'scan' ? st.scanned : st.imported;
   const img = new Image();
   img.onload = () => {
-    fitCanvas(img.width, img.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    saveHist();
-    setTool('brush');
-    if (arr[idx].faces?.length) showFaceSuggestions(arr[idx].faces);
+    requestAnimationFrame(() => {
+      fitCanvas(img.width, img.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      saveHist();
+      setTool('brush');
+    });
   };
   img.src = arr[idx].url;
 }
@@ -979,7 +900,6 @@ function centerCanvas() {
 }
 
 function closeEditor() {
-  clearFaceSuggestions();
   if (st.editSrc && st.editIdx >= 0) {
     if (st.tool === 'crop' || st.tool === 'persp') restoreLast();
     const arr = st.editSrc === 'scan' ? st.scanned : st.imported;
@@ -987,73 +907,6 @@ function closeEditor() {
   }
   st.editSrc = null; st.editIdx = -1;
   switchTab(st.currentTab);
-}
-
-// ─── Face suggestions ───
-function clearFaceSuggestions() {
-  document.querySelectorAll('.face-box,.face-all-btn').forEach(el => el.remove());
-}
-
-function showFaceSuggestions(faces) {
-  const wrap = document.getElementById('canvasWrap');
-  const allBtn = document.createElement('button');
-  allBtn.className = 'face-all-btn';
-  allBtn.textContent = `👤 全部塗黑 (${faces.length})`;
-  allBtn.onclick = () => { blackoutAllFaces(); clearFaceSuggestions(); };
-  wrap.appendChild(allBtn);
-  faces.forEach((f, i) => {
-    const box = document.createElement('div');
-    box.className = 'face-box';
-    box.dataset.faceIdx = i;
-    positionFaceBox(box, f);
-    const label = document.createElement('div');
-    label.className = 'face-box-label';
-    label.textContent = '點我塗黑';
-    box.appendChild(label);
-    box.onclick = () => { blackoutFace(f); box.remove(); checkFaceBoxes(); };
-    wrap.appendChild(box);
-  });
-}
-
-function positionFaceBox(box, f) {
-  const wrap = document.getElementById('canvasWrap');
-  const cRect = canvas.getBoundingClientRect();
-  const wRect = wrap.getBoundingClientRect();
-  box.style.left   = `${cRect.left - wRect.left + f.x * canvas.width}px`;
-  box.style.top    = `${cRect.top  - wRect.top  + f.y * canvas.height}px`;
-  box.style.width  = `${f.w * canvas.width}px`;
-  box.style.height = `${f.h * canvas.height}px`;
-}
-
-function blackoutFace(f) {
-  if (st.tool === 'crop' || st.tool === 'persp') restoreLast();
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(
-    Math.round(f.x * canvas.width),  Math.round(f.y * canvas.height),
-    Math.round(f.w * canvas.width),  Math.round(f.h * canvas.height)
-  );
-  saveHist();
-  const arr = st.editSrc === 'scan' ? st.scanned : st.imported;
-  arr[st.editIdx].url = compressCanvas(canvas);
-}
-
-function blackoutAllFaces() {
-  const arr = st.editSrc === 'scan' ? st.scanned : st.imported;
-  const faces = arr[st.editIdx]?.faces || [];
-  if (st.tool === 'crop' || st.tool === 'persp') restoreLast();
-  ctx.fillStyle = '#000000';
-  faces.forEach(f => ctx.fillRect(
-    Math.round(f.x * canvas.width), Math.round(f.y * canvas.height),
-    Math.round(f.w * canvas.width), Math.round(f.h * canvas.height)
-  ));
-  saveHist();
-  arr[st.editIdx].url = compressCanvas(canvas);
-  showToast('已塗黑所有人臉', true);
-}
-
-function checkFaceBoxes() {
-  if (!document.querySelectorAll('.face-box').length)
-    document.querySelector('.face-all-btn')?.remove();
 }
 
 // ─── Tools ───
