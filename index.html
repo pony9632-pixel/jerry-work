@@ -725,7 +725,7 @@ function capturePhoto() {
   const c = document.createElement('canvas');
   c.width = v.videoWidth; c.height = v.videoHeight;
   c.getContext('2d').drawImage(v, 0, 0);
-  st.scanned.push({ url: c.toDataURL('image/jpeg', 0.92) });
+  st.scanned.push({ url: compressCanvas(c) });
   document.getElementById('camCount').textContent = `${st.scanned.length} / ${MAX}`;
   showToast(`已拍攝第 ${st.scanned.length} 張`);
   if (st.scanned.length >= MAX) closeCamera();
@@ -804,7 +804,7 @@ function closeEditor() {
   if (st.editSrc && st.editIdx >= 0) {
     if (st.tool === 'crop' || st.tool === 'persp') restoreLast();
     const arr = st.editSrc === 'scan' ? st.scanned : st.imported;
-    arr[st.editIdx].url = canvas.toDataURL('image/jpeg', 0.92);
+    arr[st.editIdx].url = compressCanvas(canvas);
   }
   st.editSrc = null; st.editIdx = -1;
   switchTab(st.currentTab);
@@ -1127,9 +1127,24 @@ function rotate90() {
 // ═══════════════════════════════════════════════
 //  SAVE
 // ═══════════════════════════════════════════════
+
+// 壓縮 canvas 至不超過 maxBytes（預設 500KB）
+function compressCanvas(cvs, maxBytes = 500 * 1024) {
+  let q = 0.92;
+  let url = cvs.toDataURL('image/jpeg', q);
+  // 每次降低 0.1 品質，最低到 0.3
+  while (q > 0.3) {
+    const byteLen = Math.round((url.length - 'data:image/jpeg;base64,'.length) * 3 / 4);
+    if (byteLen <= maxBytes) break;
+    q = Math.round((q - 0.1) * 10) / 10;
+    url = cvs.toDataURL('image/jpeg', q);
+  }
+  return url;
+}
+
 async function saveCurrentPhoto() {
   if (st.tool === 'crop' || st.tool === 'persp') restoreLast();
-  const jpgUrl = canvas.toDataURL('image/jpeg', 0.92);
+  const jpgUrl = compressCanvas(canvas);
   const arr = st.editSrc === 'scan' ? st.scanned : st.imported;
   arr[st.editIdx].url = jpgUrl;
   await saveOnePhoto(jpgUrl, `${st.editSrc}_${st.editIdx+1}.jpg`);
@@ -1146,7 +1161,7 @@ async function saveAll() {
       }));
       if (navigator.canShare({files})) {
         await navigator.share({files, title:`全部 ${files.length} 張照片`});
-        showToast('請選擇「儲存影像」存入相簿');
+        showToast('已存入照片，請查看相簿');
         return;
       }
     } catch(err) { if (err.name === 'AbortError') return; }
@@ -1165,7 +1180,7 @@ async function saveOnePhoto(url, fname) {
   if (navigator.share && navigator.canShare?.({files:[file]})) {
     try {
       await navigator.share({files:[file], title:fname});
-      showToast('請選擇「儲存影像」存入相簿', true);
+      showToast('已存入照片，請查看相簿', true);
     } catch(err) { if (err.name !== 'AbortError') fallbackDl(url, fname); }
   } else { fallbackDl(url, fname); }
 }
