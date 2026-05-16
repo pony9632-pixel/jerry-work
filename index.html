@@ -377,7 +377,7 @@ button{-webkit-appearance:none;font-family:inherit}
       <div class="nav-greet">從網頁抓畫面</div>
       <div class="nav-title">網頁<em>截圖</em></div>
     </div>
-    <span class="nav-sub" id="importCount">0 / 5<span class="ver-badge">v1.5</span></span>
+    <span class="nav-sub" id="importCount">0 / 5<span class="ver-badge">v1.6</span></span>
   </div>
   <div class="page-scroll">
     <div class="manual-entry" onclick="openManual()">
@@ -490,9 +490,14 @@ button{-webkit-appearance:none;font-family:inherit}
   <video id="cameraVideo" autoplay playsinline muted></video>
   <div class="cam-count" id="camCount">0 / 10</div>
   <div class="camera-bar">
-    <button class="cam-btn" onclick="closeCamera()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    <button onclick="closeCamera()" style="border:none;background:rgba(255,255,255,.22);backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);border:1.5px solid rgba(255,255,255,.35);
+      color:#fff;font-size:14px;font-weight:700;font-family:inherit;
+      padding:10px 18px;border-radius:999px;cursor:pointer;
+      display:flex;align-items:center;gap:6px;letter-spacing:.02em">
+      完成拍照
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
       </svg>
     </button>
     <button class="shutter" onclick="capturePhoto()"><div class="shutter-inner"></div></button>
