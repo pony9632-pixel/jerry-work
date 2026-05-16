@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>照片工具</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1c1c1e;--surf:#2c2c2e;--surf2:#3a3a3c;--surf3:#48484a;
+  --accent:#0a84ff;--danger:#ff453a;--green:#30d158;--orange:#ff9f0a;
+  --text:#fff;--text2:rgba(235,235,245,.6);--text3:rgba(235,235,245,.28);
+  --r:14px;--tab-h:58px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+  overflow:hidden;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.screen{position:fixed;inset:0;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom));display:none;flex-direction:column}
+.screen.active{display:flex}
+#cameraScreen,#editorScreen{bottom:0}
+
+/* tab bar */
+#tabBar{position:fixed;bottom:0;left:0;right:0;
+  height:calc(var(--tab-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);
+  background:rgba(28,28,30,.96);border-top:1px solid rgba(255,255,255,.1);
+  display:grid;grid-template-columns:repeat(3,1fr);z-index:200;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+#tabBar.hidden{display:none}
+.tab-btn{border:none;background:none;color:var(--text2);font-size:10px;font-weight:500;
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding-top:6px;transition:color .15s;position:relative}
+.tab-btn.active{color:var(--accent)}
+.tab-btn svg{width:22px;height:22px}
+.tab-badge{position:absolute;top:4px;right:calc(50% - 18px);min-width:18px;height:18px;
+  background:var(--danger);border-radius:9px;font-size:11px;font-weight:700;
+  color:#fff;display:none;align-items:center;justify-content:center;padding:0 4px}
+.tab-badge.show{display:flex}
+
+/* nav */
+.nav-bar{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px 10px;padding-top:max(14px,env(safe-area-inset-top));
+  background:var(--bg);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.nav-title{font-size:20px;font-weight:700}
+.nav-sub{font-size:13px;color:var(--text2);background:var(--surf2);padding:3px 10px;border-radius:20px}
+
+/* photo grid */
+.page-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px}
+.photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:680px){.photo-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1024px){.photo-grid{grid-template-columns:repeat(4,1fr)}}
+.photo-card{position:relative;aspect-ratio:3/4;border-radius:var(--r);overflow:hidden;
+  background:var(--surf);cursor:pointer;transition:transform .12s}
+.photo-card:active{transform:scale(.96)}
+.photo-card img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-card .src-badge{position:absolute;top:7px;left:7px;background:rgba(0,0,0,.6);
+  color:#fff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;backdrop-filter:blur(6px)}
+.photo-card .num-badge{position:absolute;bottom:7px;left:7px;background:rgba(0,0,0,.55);
+  color:#fff;font-size:11px;font-weight:600;padding:2px 7px;border-radius:8px;backdrop-filter:blur(6px)}
+.photo-card .del-btn{position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:50%;
+  background:rgba(0,0,0,.6);border:none;color:#fff;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.photo-card .save-btn{position:absolute;bottom:5px;right:5px;width:32px;height:32px;border-radius:50%;
+  background:var(--accent);border:none;color:#fff;font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(10,132,255,.5)}
+.photo-card .save-btn:active{opacity:.75}
+.add-card{aspect-ratio:3/4;border-radius:var(--r);border:2px dashed rgba(255,255,255,.18);
+  background:var(--surf);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:10px;cursor:pointer;color:var(--text2);font-size:14px}
+.add-card:active{background:var(--surf2)}
+.empty-state{display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:60px 32px;text-align:center;color:var(--text2)}
+.empty-state.show{display:flex}
+.empty-state svg{opacity:.25}
+.empty-state p{font-size:15px;line-height:1.6}
+
+/* fab */
+.fab{position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 14px);
+  left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;border:none;
+  border-radius:50px;padding:14px 28px;font-size:16px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:9px;white-space:nowrap;
+  box-shadow:0 4px 20px rgba(10,132,255,.45);transition:opacity .15s,transform .15s}
+.fab:active{opacity:.85;transform:translateX(-50%) scale(.97)}
+.fab:disabled{background:var(--surf2);color:var(--text2);box-shadow:none}
+
+/* camera */
+#cameraScreen{background:#000}
+#cameraVideo{flex:1;width:100%;object-fit:cover}
+.camera-bar{position:absolute;bottom:0;left:0;right:0;padding:20px;
+  padding-bottom:max(28px,env(safe-area-inset-bottom));
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(transparent,rgba(0,0,0,.72))}
+.shutter{width:74px;height:74px;border-radius:50%;border:4px solid #fff;
+  background:rgba(255,255,255,.22);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;-webkit-appearance:none}
+.shutter:active .shutter-inner{transform:scale(.85)}
+.shutter-inner{width:54px;height:54px;border-radius:50%;background:#fff;transition:transform .1s}
+.cam-btn{width:46px;height:46px;border-radius:50%;border:none;background:rgba(255,255,255,.2);
+  color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.cam-count{position:absolute;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.55);color:#fff;padding:5px 14px;border-radius:20px;
+  font-size:14px;font-weight:600;backdrop-filter:blur(8px)}
+
+/* editor */
+#editorScreen{background:#000}
+.editor-top{display:flex;align-items:center;gap:8px;padding:10px 14px;
+  padding-top:max(10px,env(safe-area-inset-top));
+  background:var(--bg);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.back-btn{border:none;background:none;color:var(--accent);font-size:16px;cursor:pointer;
+  padding:4px 2px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.editor-title{flex:1;text-align:center;font-size:16px;font-weight:600}
+.save-jpg-btn{border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:600;
+  padding:8px 14px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.save-jpg-btn:active{opacity:.8}
+.canvas-wrap{flex:1;position:relative;overflow:hidden;background:#111;
+  display:flex;align-items:center;justify-content:center}
+#editorCanvas{position:absolute;top:0;left:0;touch-action:none}
+.editor-bar{background:var(--bg);border-top:1px solid rgba(255,255,255,.08);
+  padding:10px 14px;padding-bottom:max(10px,env(safe-area-inset-bottom));flex-shrink:0}
+.tool-row{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.tool-row:last-child{margin-bottom:0}
+
+/* tool buttons — 5 flex + 2 icon */
+.tool-btn{flex:1;height:40px;border-radius:10px;border:2px solid rgba(255,255,255,.13);
+  background:var(--surf);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:4px;transition:all .12s;
+  min-width:0;padding:0 2px}
+.tool-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tool-btn:active{opacity:.8}
+.icon-btn{width:40px;height:40px;border-radius:10px;border:2px solid rgba(255,255,255,.13);
+  background:var(--surf);color:var(--text);font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.icon-btn:active{opacity:.8}
+.icon-btn.rotate:active{background:var(--orange);border-color:var(--orange);color:#fff}
+.icon-btn.undo:active{background:var(--danger);border-color:var(--danger);color:#fff}
+
+/* color + size */
+.color-wrap{position:relative;width:40px;height:40px;flex-shrink:0}
+.color-wrap input[type=color]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:none;padding:0}
+.color-swatch{width:40px;height:40px;border-radius:10px;border:2px solid rgba(255,255,255,.3);pointer-events:none}
+.size-slider{flex:1;height:4px;-webkit-appearance:none;appearance:none;
+  background:var(--surf2);border-radius:2px;outline:none;cursor:pointer}
+.size-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;
+  border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.15);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.size-label{font-size:12px;color:var(--text2);flex-shrink:0;width:26px;text-align:right}
+
+/* confirm rows */
+#cropRow,#perspRow{display:none}
+.confirm-hint{font-size:12px;color:var(--text2);text-align:center;padding-bottom:6px;line-height:1.5}
+.confirm-btn-row{display:flex;gap:8px}
+.btn-ok{flex:1;height:40px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+.btn-cancel{flex:1;height:40px;border-radius:10px;border:none;background:var(--surf2);color:var(--text);font-size:14px;cursor:pointer}
+.btn-ok:active,.btn-cancel:active{opacity:.8}
+
+/* persp handles legend */
+.handle-legend{display:flex;gap:6px;margin-bottom:6px;justify-content:center}
+.handle-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* export */
+.export-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08)}
+.export-count{font-size:15px;font-weight:600}
+.export-count span{color:var(--text2);font-weight:400;font-size:13px}
+.export-all-btn{border:none;background:var(--green);color:#fff;font-size:14px;font-weight:600;
+  padding:10px 18px;border-radius:12px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.export-all-btn:active{opacity:.8}
+.export-all-btn:disabled{background:var(--surf2);color:var(--text2)}
+
+/* import / workflow */
+.workflow-card{background:var(--surf);border-radius:var(--r);margin:0 0 12px;overflow:hidden}
+.workflow-step{display:flex;gap:14px;align-items:flex-start;padding:16px}
+.workflow-step+.workflow-step{border-top:1px solid rgba(255,255,255,.07)}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;
+  font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-body{flex:1;min-width:0}
+.step-title{font-size:15px;font-weight:600;margin-bottom:4px}
+.step-desc{font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:10px}
+.step-desc:last-child{margin-bottom:0}
+.step-url{font-size:12px;color:var(--text3);word-break:break-all;margin-bottom:10px;
+  background:var(--surf2);padding:6px 10px;border-radius:8px;font-family:monospace}
+.step-btn{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:10px;
+  padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.step-btn:active{opacity:.75}
+.step-btn.primary{background:var(--accent);color:#fff}
+.step-btn.green{background:var(--green);color:#fff}
+.step-btn.secondary{background:var(--surf2);color:var(--text)}
+.kbd{display:inline-block;background:var(--surf3);border-radius:6px;padding:2px 7px;
+  font-size:12px;font-weight:600;color:var(--text);letter-spacing:.03em}
+.import-progress{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px 0;font-size:13px;color:var(--text2)}
+.import-progress strong{color:var(--text);font-size:14px}
+.progress-bar-wrap{height:4px;background:var(--surf2);border-radius:2px;margin:10px 0 14px;overflow:hidden}
+.progress-bar{height:100%;background:var(--green);border-radius:2px;transition:width .3s}
+
+/* loading overlay */
+#loadingOverlay{position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:none;align-items:center;justify-content:center;z-index:9000;backdrop-filter:blur(4px)}
+#loadingOverlay.show{display:flex}
+.loading-box{background:var(--surf);border-radius:16px;padding:28px 36px;
+  display:flex;flex-direction:column;align-items:center;gap:16px}
+.spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.15);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-box p{font-size:15px;color:var(--text2)}
+
+/* toast */
+.toast{position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 14px);
+  left:50%;transform:translateX(-50%) translateY(10px);
+  background:rgba(28,28,28,.95);color:#fff;padding:11px 20px;border-radius:12px;
+  font-size:14px;font-weight:500;opacity:0;transition:all .25s;pointer-events:none;
+  white-space:nowrap;backdrop-filter:blur(14px);z-index:9999;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.top{bottom:auto;top:max(calc(env(safe-area-inset-top) + 56px),76px)}
+
+#fileInput,#importInput{display:none}
+button{-webkit-appearance:none}
+</style>
+</head>
+<body>
+
+<!-- ══ Tab 1: 掃描 ══ -->
+<div id="scanScreen" class="screen">
+  <div class="nav-bar">
+    <span class="nav-title">掃描照片</span>
+    <span class="nav-sub" id="scanCount">0 / 10</span>
+  </div>
+  <div class="page-scroll">
+    <div class="photo-grid" id="scanGrid"></div>
+    <div class="empty-state" id="scanEmpty">
+      <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <p>點選下方按鈕拍攝照片<br>最多 10 張</p>
+    </div>
+  </div>
+  <button class="fab" id="scanFab" onclick="openCamera()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    拍攝照片
+  </button>
+</div>
+
+<!-- ══ Tab 2: 截圖匯入 ══ -->
+<div id="importScreen" class="screen active">
+  <div class="nav-bar">
+    <span class="nav-title">網頁截圖</span>
+    <span class="nav-sub" id="importCount">0 / 5</span>
+  </div>
+  <div class="page-scroll">
+
+    <!-- Workflow card -->
+    <div class="workflow-card">
+
+      <!-- Step 1 -->
+      <div class="workflow-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">開啟目標網站</div>
+          <div class="step-url">https://www.eduwebportal.com/login.php</div>
+          <button class="step-btn primary" onclick="openWebsite()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            在 Safari 開啟
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="workflow-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">截取畫面（最多 5 張）</div>
+          <div class="step-desc">
+            iPad：同時按 <span class="kbd">電源</span> + <span class="kbd">音量＋</span><br>
+            截圖會自動存入「照片」App
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /workflow-card -->
+
+  </div>
+</div>
+
+<!-- ══ Tab 3: 全部匯出 ══ -->
+<div id="exportScreen" class="screen">
+  <div class="nav-bar"><span class="nav-title">全部照片</span></div>
+  <div class="export-header">
+    <div class="export-count" id="exportCountLabel">共 0 張 <span>（掃描 0 + 匯入 0）</span></div>
+    <button class="export-all-btn" id="exportAllBtn" onclick="saveAll()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      全部儲存
+    </button>
+  </div>
+  <div class="page-scroll">
+    <div class="photo-grid" id="exportGrid"></div>
+    <div class="empty-state" id="exportEmpty">
+      <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <p>先到「掃描」或「匯入」分頁加入照片<br>再回此處統一儲存到相簿</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Camera ══ -->
+<div id="cameraScreen" class="screen">
+  <video id="cameraVideo" autoplay playsinline muted></video>
+  <div class="cam-count" id="camCount">0 / 10</div>
+  <div class="camera-bar">
+    <button class="cam-btn" onclick="closeCamera()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <button class="shutter" onclick="capturePhoto()"><div class="shutter-inner"></div></button>
+    <button class="cam-btn" onclick="flipCamera()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M1 4v6h6M23 20v-6h-6"/>
+        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- ══ Editor ══ -->
+<div id="editorScreen" class="screen">
+  <div class="editor-top">
+    <button class="back-btn" onclick="closeEditor()">
+      <svg width="9" height="15" viewBox="0 0 9 15" fill="none">
+        <path d="M8 1L1 7.5L8 14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>返回
+    </button>
+    <span class="editor-title" id="editorTitle">編輯</span>
+    <button class="save-jpg-btn" onclick="saveCurrentPhoto()">儲存 JPG</button>
+  </div>
+  <div class="canvas-wrap" id="canvasWrap"><canvas id="editorCanvas"></canvas></div>
+  <div class="editor-bar">
+
+    <!-- Row 1: All tools -->
+    <div class="tool-row" id="toolRow">
+      <button class="tool-btn active" id="btnBrush" onclick="setTool('brush')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+        </svg>畫筆
+      </button>
+      <button class="tool-btn" id="btnBlackout" onclick="setTool('blackout')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+        塗色
+      </button>
+      <button class="tool-btn" id="btnCrop" onclick="setTool('crop')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polyline points="6 2 6 18 22 18"/><polyline points="2 6 18 6 18 22"/>
+        </svg>裁切
+      </button>
+      <button class="tool-btn" id="btnPersp" onclick="setTool('persp')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polygon points="4,20 20,20 17,4 7,4"/>
+        </svg>矯正
+      </button>
+      <!-- rotate 90° -->
+      <button class="icon-btn rotate" onclick="rotate90()" title="旋轉 90°">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M21 2v6h-6"/>
+          <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+          <path d="M3 12a9 9 0 0 0 9 9 9 9 0 0 0 6-2.3"/>
+        </svg>
+      </button>
+      <!-- undo -->
+      <button class="icon-btn undo" onclick="undo()" title="復原">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7v6h6M3 13A9 9 0 1 0 5.6 5.6"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Row 2: Color + size (brush / blackout) -->
+    <div class="tool-row" id="optRow">
+      <div class="color-wrap">
+        <div class="color-swatch" id="colorSwatch" style="background:#ff3b30"></div>
+        <input type="color" id="colorPicker" value="#ffffff" oninput="updateColor(this.value)">
+      </div>
+      <input type="range" class="size-slider" id="sizeSlider" min="2" max="60" value="8" oninput="updateSize(+this.value)">
+      <span class="size-label" id="sizeLabel">8</span>
+    </div>
+
+    <!-- Row 3: Rect crop confirm -->
+    <div class="tool-row" id="cropRow">
+      <div style="flex:1">
+        <div class="confirm-hint">拖拉選擇要裁切的區域</div>
+        <div class="confirm-btn-row">
+          <button class="btn-cancel" onclick="setTool('brush')">取消</button>
+          <button class="btn-ok"     onclick="confirmCrop()">確認裁切</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: Perspective confirm -->
+    <div class="tool-row" id="perspRow">
+      <div style="flex:1">
+        <div class="confirm-hint">
+          拖拉 4 個控制點到文件角落<br>
+          <span style="color:var(--accent)">① 左上</span>
+          <span style="color:var(--orange)">② 右上</span>
+          <span style="color:var(--green)">③ 右下</span>
+          <span style="color:#bf5af2">④ 左下</span>
+          → 自動校正為水平矩形
+        </div>
+        <div class="confirm-btn-row">
+          <button class="btn-cancel" onclick="setTool('brush')">取消</button>
+          <button class="btn-ok"     onclick="confirmPersp()">確認矯正</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<nav id="tabBar">
+  <button class="tab-btn active" id="tabImport" onclick="switchTab('import')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <path d="M8 21h8M12 17v4"/>
+      <circle cx="17" cy="8" r="1.5" fill="currentColor" stroke="none"/>
+    </svg>截圖
+  </button>
+  <button class="tab-btn" id="tabScan" onclick="switchTab('scan')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>掃描
+    <div class="tab-badge" id="badgeScan"></div>
+  </button>
+  <button class="tab-btn" id="tabExport" onclick="switchTab('export')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>全部匯出
+    <div class="tab-badge" id="badgeExport"></div>
+  </button>
+</nav>
+
+<input type="file" id="fileInput"   accept="image/*" multiple capture="environment" onchange="handleCamera(this)">
+<input type="file" id="importInput" accept="image/*" multiple onchange="handleImport(this)">
+
+<div id="loadingOverlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <p id="loadingMsg">透視矯正中...</p>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  PERSPECTIVE TRANSFORM MATH
+// ═══════════════════════════════════════════════
+
+function dist(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
+
+// Gauss-Jordan elimination on augmented matrix (Ax = b)
+function gaussSolve(A, b) {
+  const n = b.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let pivotRow = c;
+    for (let r = c + 1; r < n; r++)
+      if (Math.abs(M[r][c]) > Math.abs(M[pivotRow][c])) pivotRow = r;
+    [M[c], M[pivotRow]] = [M[pivotRow], M[c]];
+    if (Math.abs(M[c][c]) < 1e-12) continue;
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = M[r][c] / M[c][c];
+      for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+    }
+  }
+  return M.map((row, i) => row[n] / row[i]);
+}
+
+// Compute homography H so that H * src[i] ≈ dst[i]
+function computeH(srcPts, dstPts) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const sx = srcPts[i].x, sy = srcPts[i].y;
+    const dx = dstPts[i].x, dy = dstPts[i].y;
+    A.push([sx, sy, 1, 0,  0,  0, -sx*dx, -sy*dx]); b.push(dx);
+    A.push([0,  0,  0, sx, sy, 1, -sx*dy, -sy*dy]); b.push(dy);
+  }
+  const h = gaussSolve(A, b);
+  return [[h[0],h[1],h[2]], [h[3],h[4],h[5]], [h[6],h[7],1]];
+}
+
+// Apply homography to a point
+function applyH(H, x, y) {
+  const w = H[2][0]*x + H[2][1]*y + H[2][2];
+  return { x: (H[0][0]*x + H[0][1]*y + H[0][2]) / w,
+           y: (H[1][0]*x + H[1][1]*y + H[1][2]) / w };
+}
+
+// Perspective warp: srcCanvas + 4 quad points → new canvas (rectangle)
+// quad order: [topLeft, topRight, bottomRight, bottomLeft]
+function perspWarp(srcCanvas, quad) {
+  const outW = Math.round((dist(quad[0], quad[1]) + dist(quad[3], quad[2])) / 2);
+  const outH = Math.round((dist(quad[0], quad[3]) + dist(quad[1], quad[2])) / 2);
+  if (outW < 4 || outH < 4) return null;
+
+  const dstPts = [{x:0,y:0},{x:outW,y:0},{x:outW,y:outH},{x:0,y:outH}];
+  // Inverse homography: output pixel → source pixel
+  const Hinv = computeH(dstPts, quad);
+
+  const out = document.createElement('canvas');
+  out.width = outW; out.height = outH;
+  const oCtx = out.getContext('2d');
+
+  const sCtx = srcCanvas.getContext('2d');
+  const sd = sCtx.getImageData(0, 0, srcCanvas.width, srcCanvas.height).data;
+  const od = oCtx.createImageData(outW, outH);
+  const od8 = od.data;
+  const sw = srcCanvas.width, sh = srcCanvas.height;
+
+  for (let oy = 0; oy < outH; oy++) {
+    for (let ox = 0; ox < outW; ox++) {
+      const sp = applyH(Hinv, ox, oy);
+      const sx = sp.x, sy = sp.y;
+      if (sx < 0 || sx >= sw - 0.5 || sy < 0 || sy >= sh - 0.5) continue;
+      // Bilinear interpolation
+      const x0 = sx | 0, y0 = sy | 0;
+      const x1 = Math.min(x0 + 1, sw - 1), y1 = Math.min(y0 + 1, sh - 1);
+      const fx = sx - x0, fy = sy - y0, fx1 = 1 - fx, fy1 = 1 - fy;
+      const i00 = (y0*sw + x0)*4, i10 = (y0*sw + x1)*4;
+      const i01 = (y1*sw + x0)*4, i11 = (y1*sw + x1)*4;
+      const oi  = (oy*outW + ox)*4;
+      od8[oi]   = sd[i00]  *fx1*fy1 + sd[i10]  *fx*fy1 + sd[i01]  *fx1*fy + sd[i11]  *fx*fy;
+      od8[oi+1] = sd[i00+1]*fx1*fy1 + sd[i10+1]*fx*fy1 + sd[i01+1]*fx1*fy + sd[i11+1]*fx*fy;
+      od8[oi+2] = sd[i00+2]*fx1*fy1 + sd[i10+2]*fx*fy1 + sd[i01+2]*fx1*fy + sd[i11+2]*fx*fy;
+      od8[oi+3] = 255;
+    }
+  }
+  oCtx.putImageData(od, 0, 0);
+  return out;
+}
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+const MAX = 10;
+const MAX_IMPORT = 5;
+const TARGET_URL = 'https://www.eduwebportal.com/login.php';
+const HANDLE_COLORS = ['#0a84ff','#ff9f0a','#30d158','#bf5af2'];
+
+const st = {
+  scanned:  [],   // {url}[]
+  imported: [],   // {url}[]
+  editSrc:  null, // 'scan' | 'import'
+  editIdx:  -1,
+  currentTab: 'scan',
+  // editor
+  tool: 'brush',
+  colors: { brush: '#ffffff', blackout: '#ffffff' },
+  brushSize: 8,
+  history: [],
+  isDrawing: false, lx:0, ly:0,
+  boStart: null,
+  cropStart: null, cropEnd: null,
+  // perspective
+  perspHandles: [],  // [{x,y}] × 4  (canvas display coords)
+  activeHandle: -1,
+  // camera
+  stream: null, facing: 'environment',
+};
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('tabBar').classList.toggle('hidden',
+    id === 'cameraScreen' || id === 'editorScreen');
+}
+
+function switchTab(tab) {
+  st.currentTab = tab;
+  ['scan','import','export'].forEach(t =>
+    document.getElementById('tab'+cap(t)).classList.toggle('active', t === tab));
+  showScreen(tab + 'Screen');
+  if (tab === 'export') renderExport();
+  if (tab === 'scan')   renderScan();
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// ═══════════════════════════════════════════════
+//  GALLERIES
+// ═══════════════════════════════════════════════
+function updateBadges() {
+  setBadge('badgeScan',   st.scanned.length);
+  setBadge('badgeExport', st.scanned.length);
+}
+function setBadge(id, n) {
+  const el = document.getElementById(id);
+  el.textContent = n || '';
+  el.classList.toggle('show', n > 0);
+}
+
+function renderScan() {
+  const grid  = document.getElementById('scanGrid');
+  const empty = document.getElementById('scanEmpty');
+  document.getElementById('scanCount').textContent = `${st.scanned.length} / ${MAX}`;
+  document.getElementById('scanFab').disabled = st.scanned.length >= MAX;
+  empty.classList.toggle('show', !st.scanned.length);
+  grid.innerHTML = '';
+  st.scanned.forEach((p, i) => grid.appendChild(makeCard(p.url, i, 'scan', false)));
+  if (st.scanned.length < MAX) grid.appendChild(makeAddCard(openCamera));
+  updateBadges();
+}
+
+function renderImport() {
+  // Import tab is now just a launcher — no grid needed
+}
+
+function renderExport() {
+  const all  = st.scanned;
+  const grid = document.getElementById('exportGrid');
+  const empty= document.getElementById('exportEmpty');
+  const btn  = document.getElementById('exportAllBtn');
+  document.getElementById('exportCountLabel').innerHTML =
+    `共 ${all.length} 張`;
+  btn.disabled = !all.length;
+  empty.classList.toggle('show', !all.length);
+  grid.innerHTML = '';
+  all.forEach(({url, src, idx}) => {
+    const card = makeCard(url, idx, src, true);
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'save-btn'; saveBtn.title = '儲存';
+    saveBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>`;
+    saveBtn.onclick = e => { e.stopPropagation(); saveOnePhoto(url, `${src}_${idx+1}.jpg`); };
+    card.appendChild(saveBtn);
+    grid.appendChild(card);
+  });
+  updateBadges();
+}
+
+function allPhotos() {
+  const out = [];
+  st.scanned.forEach( (p,i) => out.push({url:p.url, src:'scan',   idx:i}));
+  st.imported.forEach((p,i) => out.push({url:p.url, src:'import', idx:i}));
+  return out;
+}
+
+function makeCard(url, idx, src, showSrcBadge) {
+  const card = document.createElement('div');
+  card.className = 'photo-card';
+  card.innerHTML = `<img src="${url}" alt="">
+    ${showSrcBadge ? `<span class="src-badge">${src==='scan'?'掃描':'匯入'}</span>` : ''}
+    <span class="num-badge">${idx+1}</span>
+    <button class="del-btn">✕</button>`;
+  card.querySelector('.del-btn').onclick = e => {
+    e.stopPropagation();
+    (src === 'scan' ? st.scanned : st.imported).splice(idx, 1);
+    if (src === 'scan')   renderScan();
+    if (src === 'import') renderImport();
+    if (st.currentTab === 'export') renderExport();
+    updateBadges();
+  };
+  card.onclick = () => openEditor(src, idx);
+  return card;
+}
+
+function makeAddCard(cb) {
+  const c = document.createElement('div');
+  c.className = 'add-card';
+  c.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+  </svg><span>加入</span>`;
+  c.onclick = cb; return c;
+}
+
+// ═══════════════════════════════════════════════
+//  CAMERA
+// ═══════════════════════════════════════════════
+async function openCamera() {
+  if (st.scanned.length >= MAX) return;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    document.getElementById('fileInput').click(); return;
+  }
+  try {
+    st.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: st.facing, width:{ideal:3840}, height:{ideal:2160} }, audio: false
+    });
+    document.getElementById('cameraVideo').srcObject = st.stream;
+    document.getElementById('camCount').textContent = `${st.scanned.length} / ${MAX}`;
+    showScreen('cameraScreen');
+  } catch { document.getElementById('fileInput').click(); }
+}
+function closeCamera() { stopStream(); switchTab('scan'); }
+function stopStream() { st.stream?.getTracks().forEach(t => t.stop()); st.stream = null; }
+async function flipCamera() {
+  st.facing = st.facing === 'environment' ? 'user' : 'environment';
+  stopStream();
+  st.stream = await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:st.facing}, audio:false });
+  document.getElementById('cameraVideo').srcObject = st.stream;
+}
+function capturePhoto() {
+  if (st.scanned.length >= MAX) { closeCamera(); return; }
+  const v = document.getElementById('cameraVideo');
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  st.scanned.push({ url: c.toDataURL('image/jpeg', 0.92) });
+  document.getElementById('camCount').textContent = `${st.scanned.length} / ${MAX}`;
+  showToast(`已拍攝第 ${st.scanned.length} 張`);
+  if (st.scanned.length >= MAX) closeCamera();
+}
+function handleCamera(input) {
+  Array.from(input.files).slice(0, MAX - st.scanned.length).forEach(f => {
+    const r = new FileReader();
+    r.onload = e => { st.scanned.push({url:e.target.result}); renderScan(); };
+    r.readAsDataURL(f);
+  });
+  input.value = '';
+}
+function handleImport(input) {
+  const slots = MAX_IMPORT - st.imported.length;
+  if (slots <= 0) { showToast('已達 5 張上限，請先刪除部分截圖'); input.value = ''; return; }
+  const files = Array.from(input.files).slice(0, slots);
+  let loaded = 0;
+  files.forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      st.imported.push({ url: e.target.result });
+      loaded++;
+      if (loaded === files.length) {
+        renderImport();
+        showToast(`已匯入 ${files.length} 張截圖，共 ${st.imported.length} / ${MAX_IMPORT}`);
+      }
+    };
+    r.readAsDataURL(f);
+  });
+  input.value = '';
+}
+
+function openWebsite() {
+  window.open(TARGET_URL, '_blank');
+  showToast('已開啟網站，截圖後回來此 App 繼續操作');
+}
+
+// ═══════════════════════════════════════════════
+//  EDITOR — canvas setup
+// ═══════════════════════════════════════════════
+const canvas = document.getElementById('editorCanvas');
+const ctx    = canvas.getContext('2d');
+
+function openEditor(src, idx) {
+  st.editSrc = src; st.editIdx = idx;
+  st.history = []; st.cropStart = st.cropEnd = null; st.perspHandles = [];
+  document.getElementById('editorTitle').textContent =
+    `${src==='scan'?'掃描':'匯入'} ${idx+1}`;
+  showScreen('editorScreen');
+  const arr = src === 'scan' ? st.scanned : st.imported;
+  const img = new Image();
+  img.onload = () => {
+    fitCanvas(img.width, img.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    saveHist();
+    setTool('brush');
+  };
+  img.src = arr[idx].url;
+}
+
+function fitCanvas(imgW, imgH) {
+  const wrap = document.getElementById('canvasWrap');
+  const s = Math.min(wrap.clientWidth / imgW, wrap.clientHeight / imgH);
+  canvas.width  = Math.round(imgW * s);
+  canvas.height = Math.round(imgH * s);
+  centerCanvas();
+}
+
+function centerCanvas() {
+  const wrap = document.getElementById('canvasWrap');
+  canvas.style.left = `${(wrap.clientWidth  - canvas.width)  / 2}px`;
+  canvas.style.top  = `${(wrap.clientHeight - canvas.height) / 2}px`;
+}
+
+function closeEditor() {
+  if (st.editSrc && st.editIdx >= 0) {
+    if (st.tool === 'crop' || st.tool === 'persp') restoreLast();
+    const arr = st.editSrc === 'scan' ? st.scanned : st.imported;
+    arr[st.editIdx].url = canvas.toDataURL('image/jpeg', 0.92);
+  }
+  st.editSrc = null; st.editIdx = -1;
+  switchTab(st.currentTab);
+}
+
+// ═══════════════════════════════════════════════
+//  EDITOR — tools
+// ═══════════════════════════════════════════════
+function setTool(tool) {
+  st.tool = tool; st.boStart = null;
+
+  ['brush','blackout','crop','persp'].forEach(t =>
+    document.getElementById('btn'+cap(t)).classList.toggle('active', t === tool));
+
+  document.getElementById('optRow') .style.display = (tool==='brush'||tool==='blackout') ? 'flex' : 'none';
+  document.getElementById('cropRow').style.display = tool === 'crop'  ? 'flex' : 'none';
+  document.getElementById('perspRow').style.display= tool === 'persp' ? 'flex' : 'none';
+  document.getElementById('sizeSlider').style.display = tool === 'brush' ? '' : 'none';
+  document.getElementById('sizeLabel').style.display  = tool === 'brush' ? '' : 'none';
+
+  if (tool === 'brush' || tool === 'blackout') {
+    const col = st.colors[tool];
+    document.getElementById('colorPicker').value = col;
+    document.getElementById('colorSwatch').style.background = col;
+  }
+
+  if (tool === 'persp') {
+    // Default handles: 10px inset from each corner
+    const pad = 20;
+    st.perspHandles = [
+      {x: pad,                 y: pad},
+      {x: canvas.width - pad,  y: pad},
+      {x: canvas.width - pad,  y: canvas.height - pad},
+      {x: pad,                 y: canvas.height - pad},
+    ];
+    st.activeHandle = -1;
+    drawPerspOverlay();
+  } else if (tool !== 'crop') {
+    restoreLast();
+  }
+}
+
+function updateColor(v) {
+  st.colors[st.tool] = v;
+  document.getElementById('colorSwatch').style.background = v;
+}
+function updateSize(v) {
+  st.brushSize = v;
+  document.getElementById('sizeLabel').textContent = v;
+}
+
+// ═══════════════════════════════════════════════
+//  EDITOR — history
+// ═══════════════════════════════════════════════
+function saveHist() {
+  if (st.history.length > 40) st.history.shift();
+  st.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+}
+function restoreLast() {
+  if (st.history.length > 0)
+    ctx.putImageData(st.history[st.history.length - 1], 0, 0);
+}
+function undo() {
+  if (st.history.length <= 1) { showToast('沒有可復原的操作', true); return; }
+  st.history.pop(); restoreLast();
+  // Redraw persp overlay if in persp mode
+  if (st.tool === 'persp') drawPerspOverlay();
+}
+
+// ═══════════════════════════════════════════════
+//  EDITOR — pointer events
+// ═══════════════════════════════════════════════
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const s = e.touches ? e.touches[0] : e;
+  return {
+    x: (s.clientX - r.left) * (canvas.width  / r.width),
+    y: (s.clientY - r.top)  * (canvas.height / r.height),
+  };
+}
+function mkRect(a, b) {
+  return {x:Math.min(a.x,b.x), y:Math.min(a.y,b.y), w:Math.abs(b.x-a.x), h:Math.abs(b.y-a.y)};
+}
+
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  const p = getPos(e);
+  if (st.tool === 'brush') {
+    st.isDrawing = true; st.lx = p.x; st.ly = p.y;
+    ctx.beginPath(); ctx.arc(p.x, p.y, st.brushSize/2, 0, Math.PI*2);
+    ctx.fillStyle = st.colors.brush; ctx.fill();
+  } else if (st.tool === 'blackout') {
+    st.boStart = p;
+  } else if (st.tool === 'crop') {
+    st.cropStart = p; st.cropEnd = null;
+  } else if (st.tool === 'persp') {
+    st.activeHandle = closestHandle(p);
+  }
+}, {passive:false});
+
+canvas.addEventListener('pointermove', e => {
+  e.preventDefault();
+  const p = getPos(e);
+  if (st.tool === 'brush' && st.isDrawing) {
+    ctx.beginPath(); ctx.moveTo(st.lx, st.ly); ctx.lineTo(p.x, p.y);
+    ctx.strokeStyle = st.colors.brush; ctx.lineWidth = st.brushSize;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+    st.lx = p.x; st.ly = p.y;
+  } else if (st.tool === 'blackout' && st.boStart) {
+    restoreLast();
+    const r = mkRect(st.boStart, p);
+    ctx.fillStyle = st.colors.blackout; ctx.fillRect(r.x, r.y, r.w, r.h);
+  } else if (st.tool === 'crop' && st.cropStart) {
+    st.cropEnd = p; drawCropOverlay();
+  } else if (st.tool === 'persp' && st.activeHandle >= 0) {
+    st.perspHandles[st.activeHandle] = clampToCanvas(p);
+    drawPerspOverlay();
+  }
+}, {passive:false});
+
+canvas.addEventListener('pointerup', e => {
+  e.preventDefault();
+  const p = getPos(e);
+  if (st.tool === 'brush' && st.isDrawing) {
+    st.isDrawing = false; saveHist();
+  } else if (st.tool === 'blackout' && st.boStart) {
+    const r = mkRect(st.boStart, p);
+    if (r.w > 3 && r.h > 3) {
+      ctx.fillStyle = st.colors.blackout; ctx.fillRect(r.x, r.y, r.w, r.h); saveHist();
+    }
+    st.boStart = null;
+  } else if (st.tool === 'crop' && st.cropStart) {
+    st.cropEnd = p; drawCropOverlay();
+  } else if (st.tool === 'persp') {
+    st.activeHandle = -1;
+  }
+}, {passive:false});
+
+canvas.addEventListener('pointerleave', () => {
+  if (st.tool === 'brush' && st.isDrawing) { st.isDrawing = false; saveHist(); }
+  if (st.tool === 'persp') st.activeHandle = -1;
+});
+
+function clampToCanvas(p) {
+  return { x: Math.max(0, Math.min(canvas.width,  p.x)),
+           y: Math.max(0, Math.min(canvas.height, p.y)) };
+}
+
+// ═══════════════════════════════════════════════
+//  EDITOR — rect crop overlay
+// ═══════════════════════════════════════════════
+function drawCropOverlay() {
+  if (!st.cropStart || !st.cropEnd) return;
+  const r = mkRect(st.cropStart, st.cropEnd);
+  restoreLast();
+  ctx.save();
+  // Dark mask with hole
+  ctx.beginPath();
+  ctx.rect(0, 0, canvas.width, canvas.height);
+  ctx.rect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = 'rgba(0,0,0,.52)';
+  ctx.fill('evenodd');
+  // Border
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([6,3]); ctx.strokeRect(r.x+1, r.y+1, r.w-2, r.h-2); ctx.setLineDash([]);
+  // Corner handles
+  [[r.x,r.y],[r.x+r.w/2,r.y],[r.x+r.w,r.y],
+   [r.x,r.y+r.h/2],[r.x+r.w,r.y+r.h/2],
+   [r.x,r.y+r.h],[r.x+r.w/2,r.y+r.h],[r.x+r.w,r.y+r.h]]
+  .forEach(([hx,hy]) => { ctx.fillStyle='#fff'; ctx.fillRect(hx-5, hy-5, 10, 10); });
+  // Size label
+  ctx.font = 'bold 12px -apple-system,sans-serif';
+  ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(r.x+r.w/2-34, r.y+r.h/2-11, 68, 20);
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.fillText(`${Math.round(r.w)} × ${Math.round(r.h)}`, r.x+r.w/2, r.y+r.h/2+4);
+  ctx.restore();
+}
+
+function confirmCrop() {
+  if (!st.cropStart || !st.cropEnd) { showToast('請先拖拉選擇裁切範圍', true); return; }
+  const r = mkRect(st.cropStart, st.cropEnd);
+  if (r.w < 10 || r.h < 10) { showToast('裁切區域太小', true); return; }
+  const clean = st.history[st.history.length - 1];
+  const tmp = document.createElement('canvas');
+  tmp.width = r.w; tmp.height = r.h;
+  tmp.getContext('2d').putImageData(clean, -r.x, -r.y);
+  canvas.width = r.w; canvas.height = r.h;
+  ctx.drawImage(tmp, 0, 0);
+  centerCanvas();
+  st.history = []; saveHist();
+  st.cropStart = st.cropEnd = null;
+  setTool('brush'); showToast('裁切完成', true);
+}
+
+// ═══════════════════════════════════════════════
+//  EDITOR — perspective overlay & confirm
+// ═══════════════════════════════════════════════
+function closestHandle(pos) {
+  let minD = Infinity, minI = -1;
+  st.perspHandles.forEach((p, i) => {
+    const d = Math.hypot(pos.x - p.x, pos.y - p.y);
+    if (d < minD) { minD = d; minI = i; }
+  });
+  // Allow grab within 50 canvas-px
+  return minD < 50 ? minI : -1;
+}
+
+function drawPerspOverlay() {
+  restoreLast();
+  const pts = st.perspHandles;
+  if (pts.length < 4) return;
+  ctx.save();
+
+  // Dark mask outside the quad (evenodd: inner quad = hole)
+  ctx.beginPath();
+  ctx.rect(0, 0, canvas.width, canvas.height);
+  ctx.moveTo(pts[0].x, pts[0].y);
+  ctx.lineTo(pts[1].x, pts[1].y);
+  ctx.lineTo(pts[2].x, pts[2].y);
+  ctx.lineTo(pts[3].x, pts[3].y);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0,0,0,.52)';
+  ctx.fill('evenodd');
+
+  // Quad border
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(255,255,255,.8)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Draw lines between handles for visual clarity
+  [[0,1],[1,2],[2,3],[3,0]].forEach(([a,b]) => {
+    ctx.beginPath();
+    ctx.moveTo(pts[a].x, pts[a].y);
+    ctx.lineTo(pts[b].x, pts[b].y);
+  });
+
+  // Handle circles
+  pts.forEach((p, i) => {
+    const active = i === st.activeHandle;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, active ? 20 : 16, 0, Math.PI*2);
+    ctx.fillStyle = active ? '#fff' : HANDLE_COLORS[i];
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = active ? 3 : 2;
+    ctx.stroke();
+    // Number
+    ctx.fillStyle = active ? '#000' : '#fff';
+    ctx.font = 'bold 12px -apple-system,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(i + 1, p.x, p.y);
+  });
+
+  ctx.restore();
+}
+
+async function confirmPersp() {
+  if (st.perspHandles.length < 4) return;
+
+  // Get the clean image (before overlay was drawn)
+  const clean = st.history[st.history.length - 1];
+  const tmpSrc = document.createElement('canvas');
+  tmpSrc.width = canvas.width; tmpSrc.height = canvas.height;
+  tmpSrc.getContext('2d').putImageData(clean, 0, 0);
+
+  // Show loading for large transforms
+  document.getElementById('loadingMsg').textContent = '透視矯正中...';
+  document.getElementById('loadingOverlay').classList.add('show');
+
+  // Yield to browser to render loading UI before heavy computation
+  await new Promise(r => setTimeout(r, 30));
+
+  const result = perspWarp(tmpSrc, st.perspHandles);
+  document.getElementById('loadingOverlay').classList.remove('show');
+
+  if (!result) { showToast('矯正失敗，請重新選取四個角點', true); return; }
+
+  canvas.width = result.width; canvas.height = result.height;
+  ctx.drawImage(result, 0, 0);
+  centerCanvas();
+  st.history = []; saveHist();
+  st.perspHandles = [];
+  setTool('brush');
+  showToast('透視矯正完成', true);
+}
+
+// ═══════════════════════════════════════════════
+//  EDITOR — rotate 90° clockwise
+// ═══════════════════════════════════════════════
+function rotate90() {
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.height; tmp.height = canvas.width;
+  const tCtx = tmp.getContext('2d');
+  tCtx.translate(tmp.width / 2, tmp.height / 2);
+  tCtx.rotate(Math.PI / 2);
+  tCtx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+  canvas.width  = tmp.width;
+  canvas.height = tmp.height;
+  ctx.drawImage(tmp, 0, 0);
+  centerCanvas();
+  saveHist();
+  // Re-draw persp overlay if active
+  if (st.tool === 'persp') {
+    const pad = 20;
+    st.perspHandles = [
+      {x:pad, y:pad},
+      {x:canvas.width-pad, y:pad},
+      {x:canvas.width-pad, y:canvas.height-pad},
+      {x:pad, y:canvas.height-pad},
+    ];
+    drawPerspOverlay();
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  SAVE
+// ═══════════════════════════════════════════════
+async function saveCurrentPhoto() {
+  if (st.tool === 'crop' || st.tool === 'persp') restoreLast();
+  const jpgUrl = canvas.toDataURL('image/jpeg', 0.92);
+  const arr = st.editSrc === 'scan' ? st.scanned : st.imported;
+  arr[st.editIdx].url = jpgUrl;
+  await saveOnePhoto(jpgUrl, `${st.editSrc}_${st.editIdx+1}.jpg`);
+}
+
+async function saveAll() {
+  const all = st.scanned;
+  if (!all.length) return;
+  if (navigator.share && navigator.canShare) {
+    try {
+      const files = await Promise.all(all.map(async (p, idx) => {
+        const blob = await (await fetch(p.url)).blob();
+        return new File([blob], `scan_${idx+1}.jpg`, {type:'image/jpeg'});
+      }));
+      if (navigator.canShare({files})) {
+        await navigator.share({files, title:`全部 ${files.length} 張照片`});
+        showToast('請選擇「儲存影像」存入相簿');
+        return;
+      }
+    } catch(err) { if (err.name === 'AbortError') return; }
+  }
+  for (const [idx, p] of all.entries()) {
+    const a = document.createElement('a');
+    a.href = p.url; a.download = `scan_${idx+1}.jpg`; a.click();
+    await new Promise(r => setTimeout(r, 300));
+  }
+  showToast(`已下載 ${all.length} 張 JPG`);
+}
+
+async function saveOnePhoto(url, fname) {
+  const blob = await (await fetch(url)).blob();
+  const file = new File([blob], fname, {type:'image/jpeg'});
+  if (navigator.share && navigator.canShare?.({files:[file]})) {
+    try {
+      await navigator.share({files:[file], title:fname});
+      showToast('請選擇「儲存影像」存入相簿', true);
+    } catch(err) { if (err.name !== 'AbortError') fallbackDl(url, fname); }
+  } else { fallbackDl(url, fname); }
+}
+
+function fallbackDl(url, name) {
+  const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+  showToast(`已下載 ${name}`, st.currentTab !== 'export');
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+let toastT;
+function showToast(msg, inEditor = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (inEditor ? ' top' : '') + ' show';
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+renderScan();
+renderImport();
+</script>
+</body>
+</html>
