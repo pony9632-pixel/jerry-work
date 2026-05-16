@@ -251,7 +251,7 @@ button{-webkit-appearance:none}
   <div class="nav-bar">
     <span class="nav-title">網頁截圖</span>
     <span class="nav-sub" id="importCount">0 / 5</span>
-    <span class="ver-badge">v1.0</span>
+    <span class="ver-badge">v1.1</span>
   </div>
   <div class="page-scroll">
 
@@ -346,7 +346,6 @@ button{-webkit-appearance:none}
       </svg>返回
     </button>
     <span class="editor-title" id="editorTitle">編輯</span>
-    <button class="save-jpg-btn" onclick="saveCurrentPhoto()">儲存 JPG</button>
   </div>
   <div class="canvas-wrap" id="canvasWrap"><canvas id="editorCanvas"></canvas></div>
   <div class="editor-bar">
@@ -834,13 +833,16 @@ function setTool(tool) {
   }
 
   if (tool === 'persp') {
-    // Default handles: 10px inset from each corner
-    const pad = 20;
+    // Default handles: business-card sized rect centered in canvas
+    const cw = canvas.width, ch = canvas.height;
+    const bw = Math.min(cw * 0.55, ch * 0.35);  // 名片比例 約 1.75:1
+    const bh = bw / 1.75;
+    const cx = cw / 2, cy = ch / 2;
     st.perspHandles = [
-      {x: pad,                 y: pad},
-      {x: canvas.width - pad,  y: pad},
-      {x: canvas.width - pad,  y: canvas.height - pad},
-      {x: pad,                 y: canvas.height - pad},
+      {x: cx - bw/2, y: cy - bh/2},
+      {x: cx + bw/2, y: cy - bh/2},
+      {x: cx + bw/2, y: cy + bh/2},
+      {x: cx - bw/2, y: cy + bh/2},
     ];
     st.activeHandle = -1;
     drawPerspOverlay();
