@@ -262,6 +262,17 @@ html,body{height:100%;background:var(--bg);color:var(--ink);
 .export-all-btn:active{transform:scale(.96)}
 .export-all-btn:disabled{background:var(--surf3);color:var(--ink3);box-shadow:none;cursor:not-allowed}
 
+/* ─── 輸出畫質選擇 ─── */
+.quality-row{display:flex;gap:8px;margin:0 20px 14px;flex-shrink:0}
+.quality-opt{flex:1;padding:10px 6px 8px;border-radius:16px;
+  border:1.5px solid var(--surf3);background:var(--surf);
+  color:var(--ink2);font-family:inherit;cursor:pointer;text-align:center;
+  transition:all .15s}
+.quality-opt .q-name{font-size:13px;font-weight:800;display:block}
+.quality-opt .q-desc{font-size:10px;font-weight:500;display:block;margin-top:2px;opacity:.75}
+.quality-opt.active{border-color:var(--main);background:var(--main);color:#fff}
+.quality-opt.active .q-desc{opacity:.85}
+
 /* ─── Import workflow ─── */
 .workflow-card{background:rgba(255,255,255,.8);backdrop-filter:blur(20px);
   border-radius:24px;margin:0 0 14px;overflow:hidden;
@@ -482,7 +493,7 @@ button{-webkit-appearance:none;font-family:inherit}
   <div class="nav-bar">
     <div class="nav-title-wrap">
       <div class="nav-greet" id="importGreet">早上好</div>
-      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.4</span></div>
+      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.5</span></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <span class="nav-sub" id="importDateTime" style="font-size:11px;gap:5px">—</span>
@@ -622,6 +633,26 @@ button{-webkit-appearance:none;font-family:inherit}
       全部儲存
     </button>
   </div>
+  <!-- 輸出畫質選擇 -->
+  <div class="quality-row">
+    <button class="quality-opt active" onclick="setExportQuality('original',this)">
+      <span class="q-name">原始</span>
+      <span class="q-desc">最高畫質</span>
+    </button>
+    <button class="quality-opt" onclick="setExportQuality('high',this)">
+      <span class="q-name">高</span>
+      <span class="q-desc">85% 品質</span>
+    </button>
+    <button class="quality-opt" onclick="setExportQuality('medium',this)">
+      <span class="q-name">中</span>
+      <span class="q-desc">縮70% + 75%</span>
+    </button>
+    <button class="quality-opt" onclick="setExportQuality('small',this)">
+      <span class="q-name">小</span>
+      <span class="q-desc">縮50% + 60%</span>
+    </button>
+  </div>
+
   <div class="page-scroll" style="padding-top:0">
     <div class="photo-grid" id="exportGrid"></div>
     <div class="empty-state" id="exportEmpty">
@@ -2014,14 +2045,14 @@ function drawPerspOverlay() {
   pts.forEach((p, i) => {
     const active = i === st.activeHandle;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, active ? 14 : 10, 0, Math.PI*2);
+    ctx.arc(p.x, p.y, active ? 28 : 22, 0, Math.PI*2);
     ctx.fillStyle = active ? '#fff' : HANDLE_COLORS[i];
     ctx.fill();
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = active ? 3 : 2.5;
     ctx.stroke();
     ctx.fillStyle = active ? HANDLE_COLORS[i] : '#fff';
-    ctx.font = 'bold 10px "Plus Jakarta Sans",sans-serif';
+    ctx.font = 'bold 14px "Plus Jakarta Sans",sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(i + 1, p.x, p.y);
   });
@@ -2079,13 +2110,45 @@ function compressCanvas(cvs) {
   return cvs.toDataURL('image/jpeg', 1.0);
 }
 
+// ─── 輸出畫質設定 ───
+let exportQuality = 'original';
+
+function setExportQuality(q, btn) {
+  exportQuality = q;
+  document.querySelectorAll('.quality-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function recompressForExport(url) {
+  if (exportQuality === 'original') return url;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const configs = {
+        high:   { scale: 1.0, quality: 0.85 },
+        medium: { scale: 0.7, quality: 0.75 },
+        small:  { scale: 0.5, quality: 0.60 },
+      };
+      const { scale, quality } = configs[exportQuality] || configs.high;
+      const c = document.createElement('canvas');
+      c.width  = Math.round(img.width  * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.src = url;
+  });
+}
+
 async function saveAll() {
   const all = st.scanned;
   if (!all.length) return;
+  showToast('處理中…');
+  const urls = await Promise.all(all.map(p => recompressForExport(p.url)));
   if (navigator.share && navigator.canShare) {
     try {
-      const files = await Promise.all(all.map(async (p, idx) => {
-        const blob = await (await fetch(p.url)).blob();
+      const files = await Promise.all(urls.map(async (url, idx) => {
+        const blob = await (await fetch(url)).blob();
         return new File([blob], `scan_${idx+1}.jpg`, {type:'image/jpeg'});
       }));
       if (navigator.canShare({files})) {
@@ -2095,23 +2158,24 @@ async function saveAll() {
       }
     } catch(err) { if (err.name === 'AbortError') return; }
   }
-  for (const [idx, p] of all.entries()) {
+  for (const [idx, url] of urls.entries()) {
     const a = document.createElement('a');
-    a.href = p.url; a.download = `scan_${idx+1}.jpg`; a.click();
+    a.href = url; a.download = `scan_${idx+1}.jpg`; a.click();
     await new Promise(r => setTimeout(r, 300));
   }
   showToast(`已下載 ${all.length} 張 JPG`);
 }
 
 async function saveOnePhoto(url, fname) {
-  const blob = await (await fetch(url)).blob();
+  const exportUrl = await recompressForExport(url);
+  const blob = await (await fetch(exportUrl)).blob();
   const file = new File([blob], fname, {type:'image/jpeg'});
   if (navigator.share && navigator.canShare?.({files:[file]})) {
     try {
       await navigator.share({files:[file], title:fname});
       showToast('已存入照片，請查看相簿', true);
-    } catch(err) { if (err.name !== 'AbortError') fallbackDl(url, fname); }
-  } else { fallbackDl(url, fname); }
+    } catch(err) { if (err.name !== 'AbortError') fallbackDl(exportUrl, fname); }
+  } else { fallbackDl(exportUrl, fname); }
 }
 
 function fallbackDl(url, name) {
