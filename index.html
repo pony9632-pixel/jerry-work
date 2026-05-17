@@ -482,7 +482,7 @@ button{-webkit-appearance:none;font-family:inherit}
   <div class="nav-bar">
     <div class="nav-title-wrap">
       <div class="nav-greet" id="importGreet">早上好</div>
-      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.1</span></div>
+      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.2</span></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <span class="nav-sub" id="importDateTime" style="font-size:11px;gap:5px">—</span>
@@ -1460,7 +1460,7 @@ function resetZoom() {
   wrap.addEventListener('touchstart', e => {
     if (e.touches.length === 2) {
       panning = true;
-      st.isDrawing = false; // 中斷單指繪圖
+      st.isDrawing = false;
       lastMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       lastMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     }
@@ -1475,23 +1475,37 @@ function resetZoom() {
     const dy = midY - lastMidY;
     lastMidX = midX; lastMidY = midY;
 
-    const scale = parseFloat(document.getElementById('zoomSlider').value) / 100;
-    const visW  = canvas.width  * scale;
-    const visH  = canvas.height * scale;
-    const wrapW = wrap.clientWidth;
-    const wrapH = wrap.clientHeight;
-    let curL = parseFloat(canvas.style.left) || 0;
-    let curT = parseFloat(canvas.style.top)  || 0;
+    const scale  = parseFloat(document.getElementById('zoomSlider').value) / 100;
+    const W      = canvas.width;
+    const H      = canvas.height;
+    const wrapW  = wrap.clientWidth;
+    const wrapH  = wrap.clientHeight;
+    const visW   = W * scale;   // 視覺寬度
+    const visH   = H * scale;   // 視覺高度
+
+    let curL = parseFloat(canvas.style.left) || (wrapW - W) / 2;
+    let curT = parseFloat(canvas.style.top)  || (wrapH - H) / 2;
     let newL = curL + dx;
     let newT = curT + dy;
 
-    // 限制不超出範圍
-    const minL = visW > wrapW ? wrapW - visW : (wrapW - visW) / 2;
-    const maxL = visW > wrapW ? 0            : (wrapW - visW) / 2;
-    const minT = visH > wrapH ? wrapH - visH : (wrapH - visH) / 2;
-    const maxT = visH > wrapH ? 0            : (wrapH - visH) / 2;
-    newL = Math.max(minL, Math.min(maxL, newL));
-    newT = Math.max(minT, Math.min(maxT, newT));
+    // transformOrigin: center center → 視覺左緣 = L + W*(1-s)/2
+    // 限制視覺左緣 >= 0  → L <= W*(s-1)/2
+    // 限制視覺右緣 <= wrapW → L >= wrapW - W*(1+s)/2
+    if (visW > wrapW) {
+      const maxL = W * (scale - 1) / 2;
+      const minL = wrapW - W * (1 + scale) / 2;
+      newL = Math.max(minL, Math.min(maxL, newL));
+    } else {
+      newL = (wrapW - W) / 2; // 小於視窗時固定置中
+    }
+    if (visH > wrapH) {
+      const maxT = H * (scale - 1) / 2;
+      const minT = wrapH - H * (1 + scale) / 2;
+      newT = Math.max(minT, Math.min(maxT, newT));
+    } else {
+      newT = (wrapH - H) / 2;
+    }
+
     canvas.style.left = newL + 'px';
     canvas.style.top  = newT + 'px';
   }, { passive: false });
