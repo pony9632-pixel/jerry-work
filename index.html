@@ -482,7 +482,7 @@ button{-webkit-appearance:none;font-family:inherit}
   <div class="nav-bar">
     <div class="nav-title-wrap">
       <div class="nav-greet" id="importGreet">早上好</div>
-      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.2</span></div>
+      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.4</span></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <span class="nav-sub" id="importDateTime" style="font-size:11px;gap:5px">—</span>
@@ -1437,13 +1437,14 @@ function fpCopy(elId, btn) {
 
 function applyZoom(pct) {
   document.getElementById('zoomLabel').textContent = pct + '%';
-  const scale = pct / 100;
-  const wrap = document.getElementById('canvasWrap');
-  canvas.style.transformOrigin = 'center center';
+  // 實際 CSS scale = fitScale（適合螢幕）× 使用者縮放比例
+  const scale = (st.fitScale || 1) * (pct / 100);
+  const wrap  = document.getElementById('canvasWrap');
+  canvas.style.transformOrigin = '0 0';
   canvas.style.transform = `scale(${scale})`;
-  // keep centered
-  canvas.style.left = `${(wrap.clientWidth  - canvas.width)  / 2}px`;
-  canvas.style.top  = `${(wrap.clientHeight - canvas.height) / 2}px`;
+  // 置中：transformOrigin=0 0，所以 style.left = 視覺左緣位置
+  canvas.style.left = `${(wrap.clientWidth  - canvas.width  * scale) / 2}px`;
+  canvas.style.top  = `${(wrap.clientHeight - canvas.height * scale) / 2}px`;
 }
 
 function resetZoom() {
@@ -1475,35 +1476,31 @@ function resetZoom() {
     const dy = midY - lastMidY;
     lastMidX = midX; lastMidY = midY;
 
-    const scale  = parseFloat(document.getElementById('zoomSlider').value) / 100;
+    const userPct = parseFloat(document.getElementById('zoomSlider').value) / 100;
+    const scale  = (st.fitScale || 1) * userPct;
     const W      = canvas.width;
     const H      = canvas.height;
     const wrapW  = wrap.clientWidth;
     const wrapH  = wrap.clientHeight;
-    const visW   = W * scale;   // 視覺寬度
-    const visH   = H * scale;   // 視覺高度
+    const visW   = W * scale;
+    const visH   = H * scale;
 
-    let curL = parseFloat(canvas.style.left) || (wrapW - W) / 2;
-    let curT = parseFloat(canvas.style.top)  || (wrapH - H) / 2;
+    let curL = parseFloat(canvas.style.left) || (wrapW - visW) / 2;
+    let curT = parseFloat(canvas.style.top)  || (wrapH - visH) / 2;
     let newL = curL + dx;
     let newT = curT + dy;
 
-    // transformOrigin: center center → 視覺左緣 = L + W*(1-s)/2
-    // 限制視覺左緣 >= 0  → L <= W*(s-1)/2
-    // 限制視覺右緣 <= wrapW → L >= wrapW - W*(1+s)/2
+    // transformOrigin: 0 0 → 視覺左緣 = style.left
+    // 限制：左緣 >= 0 → maxL = 0；右緣 <= wrapW → minL = wrapW - visW
     if (visW > wrapW) {
-      const maxL = W * (scale - 1) / 2;
-      const minL = wrapW - W * (1 + scale) / 2;
-      newL = Math.max(minL, Math.min(maxL, newL));
+      newL = Math.max(wrapW - visW, Math.min(0, newL));
     } else {
-      newL = (wrapW - W) / 2; // 小於視窗時固定置中
+      newL = (wrapW - visW) / 2;
     }
     if (visH > wrapH) {
-      const maxT = H * (scale - 1) / 2;
-      const minT = wrapH - H * (1 + scale) / 2;
-      newT = Math.max(minT, Math.min(maxT, newT));
+      newT = Math.max(wrapH - visH, Math.min(0, newT));
     } else {
-      newT = (wrapH - H) / 2;
+      newT = (wrapH - visH) / 2;
     }
 
     canvas.style.left = newL + 'px';
@@ -1662,17 +1659,24 @@ function openEditor(src, idx) {
 
 function fitCanvas(imgW, imgH) {
   const wrap = document.getElementById('canvasWrap');
-  const s = Math.min(wrap.clientWidth / imgW, wrap.clientHeight / imgH);
-  canvas.width  = Math.round(imgW * s);
-  canvas.height = Math.round(imgH * s);
-  centerCanvas();
+  // Canvas 保持原始解析度，只用 CSS scale 控制顯示大小
+  canvas.width  = imgW;
+  canvas.height = imgH;
+  const fitS = Math.min(wrap.clientWidth / imgW, wrap.clientHeight / imgH);
+  st.fitScale = fitS;
+  canvas.style.transformOrigin = '0 0';
+  canvas.style.transform = `scale(${fitS})`;
+  canvas.style.left = `${(wrap.clientWidth  - imgW * fitS) / 2}px`;
+  canvas.style.top  = `${(wrap.clientHeight - imgH * fitS) / 2}px`;
 }
 
 function centerCanvas() {
-  const wrap = document.getElementById('canvasWrap');
-  canvas.style.left = `${(wrap.clientWidth  - canvas.width)  / 2}px`;
-  canvas.style.top  = `${(wrap.clientHeight - canvas.height) / 2}px`;
-  canvas.style.transform = '';
+  const wrap  = document.getElementById('canvasWrap');
+  const scale = (st.fitScale || 1) * (parseFloat(document.getElementById('zoomSlider')?.value || 100) / 100);
+  canvas.style.transformOrigin = '0 0';
+  canvas.style.transform = `scale(${scale})`;
+  canvas.style.left = `${(wrap.clientWidth  - canvas.width  * scale) / 2}px`;
+  canvas.style.top  = `${(wrap.clientHeight - canvas.height * scale) / 2}px`;
 }
 
 function closeEditor() {
@@ -2070,17 +2074,9 @@ function rotate90() {
 // ═══════════════════════════════════════════════
 //  SAVE
 // ═══════════════════════════════════════════════
-function compressCanvas(cvs, maxBytes = 800 * 1024) {
-  // 先嘗試 quality=1（最高畫質）
-  let q = 1.0;
-  let url = cvs.toDataURL('image/jpeg', q);
-  while (q > 0.5) {
-    const byteLen = Math.round((url.length - 'data:image/jpeg;base64,'.length) * 3 / 4);
-    if (byteLen <= maxBytes) break;
-    q = Math.round((q - 0.05) * 100) / 100;
-    url = cvs.toDataURL('image/jpeg', q);
-  }
-  return url;
+function compressCanvas(cvs) {
+  // 不限制檔案大小，以最高畫質輸出
+  return cvs.toDataURL('image/jpeg', 1.0);
 }
 
 async function saveAll() {
