@@ -508,20 +508,21 @@ button{-webkit-appearance:none;font-family:inherit}
       <!-- 姓氏 -->
       <div class="form-field">
         <label class="form-label">姓氏</label>
-        <input class="form-input" id="fSurname" type="text" placeholder="例：王" autocomplete="off">
+        <input class="form-input" id="fSurname" type="text" placeholder="例：王" autocomplete="off" oninput="this.style.borderColor=''">
       </div>
       <!-- 學號 -->
       <div class="form-field">
         <label class="form-label">學號 / 教職員證號</label>
         <input class="form-input" id="idInput" type="text"
           placeholder="輸入學號或教職員證號"
-          oninput="computeId()" autocomplete="off"
+          oninput="computeId();this.style.borderColor=''" autocomplete="off"
           autocorrect="off" autocapitalize="none" spellcheck="false">
       </div>
       <!-- 電子信箱 -->
       <div class="form-field" style="margin-bottom:14px">
         <label class="form-label">電子信箱</label>
-        <input class="form-input" id="fEmail" type="email" placeholder="example@mail.com" autocomplete="off">
+        <input class="form-input" id="fEmail" type="email" placeholder="example@edu.tw" autocomplete="off" oninput="validateEmail()">
+        <div id="emailHint" style="font-size:11px;color:var(--danger);font-weight:700;display:none;margin-top:4px">⚠️ 信箱 @ 後需包含 edu，請確認是否為教育信箱</div>
       </div>
       <!-- 開啟網站按鈕 -->
       <button class="step-btn primary form-open-btn" onclick="openWebsiteAndSave()">
@@ -1261,11 +1262,58 @@ function copyEmail() {
   }).catch(() => showToast('複製失敗，請手動長按選取'));
 }
 
+function isEduEmail(email) {
+  if (!email) return false;
+  const atIdx = email.indexOf('@');
+  if (atIdx < 0) return false;
+  return email.slice(atIdx + 1).toLowerCase().includes('edu');
+}
+
+function validateEmail() {
+  const email = document.getElementById('fEmail').value.trim();
+  const hint  = document.getElementById('emailHint');
+  const input = document.getElementById('fEmail');
+  if (email && !isEduEmail(email)) {
+    hint.style.display = 'block';
+    input.style.borderColor = 'var(--danger)';
+  } else {
+    hint.style.display = 'none';
+    input.style.borderColor = '';
+  }
+}
+
 function openWebsiteAndSave() {
   // 儲存記錄
   const surname = document.getElementById('fSurname').value.trim();
   const id      = document.getElementById('idInput').value.trim();
   const email   = document.getElementById('fEmail').value.trim();
+  // 防呆：三欄皆必填
+  const surnameEl = document.getElementById('fSurname');
+  const idEl      = document.getElementById('idInput');
+  const emailEl   = document.getElementById('fEmail');
+  let hasError = false;
+  [surnameEl, idEl, emailEl].forEach(el => el.style.borderColor = '');
+  if (!surname) {
+    surnameEl.style.borderColor = 'var(--danger)';
+    hasError = true;
+  }
+  if (!id) {
+    idEl.style.borderColor = 'var(--danger)';
+    hasError = true;
+  }
+  if (!email) {
+    emailEl.style.borderColor = 'var(--danger)';
+    document.getElementById('emailHint').style.display = 'none';
+    hasError = true;
+  } else if (!isEduEmail(email)) {
+    emailEl.style.borderColor = 'var(--danger)';
+    document.getElementById('emailHint').style.display = 'block';
+    hasError = true;
+  }
+  if (hasError) {
+    showToast('⚠️ 請填寫所有欄位，信箱需為教育信箱');
+    return;
+  }
   if (surname || id || email) {
     const recs = getRecords();
     recs.unshift({ surname, id, email, location: lastLocationName, ts: Date.now() });
