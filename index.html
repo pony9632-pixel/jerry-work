@@ -430,65 +430,47 @@ button{-webkit-appearance:none;font-family:inherit}
 
 /* ─── 懸浮資料面板 ─── */
 .float-panel{position:fixed;z-index:9990;
-  background:rgba(255,255,255,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border-radius:22px;padding:0;width:260px;
-  box-shadow:0 12px 40px rgba(14,37,71,.22),0 2px 8px rgba(14,37,71,.10);
-  border:1.5px solid rgba(255,255,255,.9);
+  background:linear-gradient(145deg,#1a3a6e,#0e2547);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-radius:24px;padding:0;
+  width:max-content;min-width:260px;max-width:calc(100vw - 32px);
+  box-shadow:0 20px 60px rgba(14,37,71,.5),0 4px 16px rgba(58,141,255,.3);
+  border:1.5px solid rgba(255,255,255,.15);
   display:none;user-select:none;-webkit-user-select:none;touch-action:none}
 .float-panel.visible{display:block}
 .float-header{display:flex;align-items:center;justify-content:space-between;
-  padding:12px 14px 10px;cursor:grab;border-bottom:1px solid var(--line)}
+  padding:14px 16px 12px;cursor:grab;border-bottom:1px solid rgba(255,255,255,.12);gap:12px}
 .float-header:active{cursor:grabbing}
-.float-name{font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:6px}
-.float-close{width:24px;height:24px;border-radius:50%;border:none;background:var(--surf3);
-  color:var(--ink2);font-size:14px;font-weight:700;cursor:pointer;
+.float-name{font-size:14px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.float-close{width:26px;height:26px;border-radius:50%;border:none;
+  background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);
+  font-size:13px;font-weight:700;cursor:pointer;
   display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}
-.float-body{padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px}
-.float-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.float-row-label{font-size:10px;font-weight:700;color:var(--ink3);flex-shrink:0;width:48px}
-.float-row-val{font-size:14px;font-weight:800;color:var(--ink);flex:1;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.float-row-val.mono{font-size:16px;letter-spacing:.04em;color:var(--main)}
-.float-copy{border:none;background:var(--main);color:#fff;
+.float-close:active{background:rgba(255,255,255,.3)}
+.float-body{padding:12px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.float-row{display:flex;align-items:center;gap:12px}
+.float-row-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);
+  flex-shrink:0;width:52px;letter-spacing:.04em}
+.float-row-val{font-size:14px;font-weight:800;color:rgba(255,255,255,.9);
+  white-space:nowrap;flex:1}
+.float-row-val.mono{font-size:17px;letter-spacing:.06em;color:#7AB7FF}
+/* 交易明細遮擋區塊（深色背景版） */
+.float-panel .id-masked{background:#111;color:#555;border-radius:4px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:800;width:20px;height:24px;letter-spacing:0}
+.float-panel .id-visible{display:inline-flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:800;color:#7AB7FF;width:16px;height:24px;letter-spacing:0}
+.float-panel .id-txn-hint{font-size:9px;color:#FF9EB5;font-weight:700;
+  margin-top:2px;letter-spacing:.02em}
+.float-copy{border:none;background:rgba(58,141,255,.9);color:#fff;
   font-size:11px;font-weight:700;font-family:inherit;
-  padding:5px 12px;border-radius:999px;cursor:pointer;flex-shrink:0;white-space:nowrap}
+  padding:6px 14px;border-radius:999px;cursor:pointer;flex-shrink:0;white-space:nowrap;margin-left:auto}
 .float-copy:active{opacity:.7}
-.float-copy.ok{background:#7BE3B4;color:var(--ink)}
-.float-divider{border:none;border-top:1px solid var(--line);margin:2px 0}
-.float-drag-hint{font-size:10px;color:var(--ink3);text-align:center;
-  padding:0 14px 10px;line-height:1.4}
+.float-copy.ok{background:#7BE3B4;color:#0e2547}
+.float-divider{border:none;border-top:1px solid rgba(255,255,255,.1);margin:0}
+.float-drag-hint{font-size:10px;color:rgba(255,255,255,.3);text-align:center;
+  padding:0 14px 12px;line-height:1.4}
 
-/* ─── Open-URL Modal ─── */
-.url-modal-overlay{position:fixed;inset:0;background:rgba(14,37,71,.45);
-  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  z-index:9999;display:flex;align-items:flex-end;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity .25s}
-.url-modal-overlay.show{opacity:1;pointer-events:all}
-.url-modal{background:var(--surf);border-radius:28px 28px 0 0;
-  padding:28px 22px calc(28px + env(safe-area-inset-bottom));
-  width:100%;max-width:540px;
-  transform:translateY(40px);transition:transform .28s cubic-bezier(.32,1,.6,1)}
-.url-modal-overlay.show .url-modal{transform:translateY(0)}
-.url-modal-handle{width:40px;height:4px;border-radius:99px;
-  background:var(--surf3);margin:0 auto 22px}
-.url-modal-title{font-size:17px;font-weight:800;color:var(--ink);margin-bottom:6px;text-align:center}
-.url-modal-sub{font-size:13px;color:var(--ink2);text-align:center;margin-bottom:20px;line-height:1.5}
-.url-modal-url{background:var(--surf2);border-radius:14px;padding:12px 16px;
-  font-size:13px;font-weight:700;color:var(--main);word-break:break-all;
-  margin-bottom:16px;text-align:center;letter-spacing:.01em}
-.url-modal-btns{display:flex;flex-direction:column;gap:10px}
-.url-modal-copy-btn{width:100%;padding:16px;border-radius:18px;border:none;
-  background:var(--main);color:#fff;font-size:16px;font-weight:800;
-  font-family:inherit;cursor:pointer;display:flex;align-items:center;
-  justify-content:center;gap:8px;transition:opacity .15s}
-.url-modal-copy-btn:active{opacity:.8}
-.url-modal-copy-btn.copied{background:#7BE3B4;color:var(--ink)}
-.url-modal-cancel{width:100%;padding:13px;border-radius:18px;border:none;
-  background:var(--surf2);color:var(--ink2);font-size:15px;font-weight:700;
-  font-family:inherit;cursor:pointer}
-.url-modal-steps{font-size:12px;color:var(--ink3);line-height:1.7;
-  text-align:center;margin-top:4px}
-.url-modal-steps strong{color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -500,7 +482,7 @@ button{-webkit-appearance:none;font-family:inherit}
   <div class="nav-bar">
     <div class="nav-title-wrap">
       <div class="nav-greet" id="importGreet">早上好</div>
-      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v2.9</span></div>
+      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.0</span></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <span class="nav-sub" id="importDateTime" style="font-size:11px;gap:5px">—</span>
@@ -539,10 +521,7 @@ button{-webkit-appearance:none;font-family:inherit}
       <!-- 電子信箱 -->
       <div class="form-field" style="margin-bottom:14px">
         <label class="form-label">電子信箱</label>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input class="form-input" id="fEmail" type="email" placeholder="example@mail.com" autocomplete="off" style="flex:1;min-width:0">
-          <button class="id-copy-btn" id="emailCopyBtn" onclick="copyEmail()" style="flex-shrink:0;white-space:nowrap;padding:10px 16px;font-size:13px;border-radius:14px">複製</button>
-        </div>
+        <input class="form-input" id="fEmail" type="email" placeholder="example@mail.com" autocomplete="off">
       </div>
       <!-- 開啟網站按鈕 -->
       <button class="step-btn primary form-open-btn" onclick="openWebsiteAndSave()">
@@ -561,17 +540,14 @@ button{-webkit-appearance:none;font-family:inherit}
           <div class="id-col">
             <div class="id-col-label">網站輸入</div>
             <div class="id-col-value" id="idWeb" style="font-size:20px;font-weight:800;color:var(--ink);letter-spacing:.06em"></div>
-            <button class="id-copy-btn" onclick="copyVal('idWeb','網站輸入')">複製</button>
           </div>
           <div class="id-col">
             <div class="id-col-label">備注六</div>
             <div class="id-col-value" id="idNote" style="font-size:20px;font-weight:800;color:var(--ink);letter-spacing:.06em;word-break:break-all"></div>
-            <button class="id-copy-btn" onclick="copyVal('idNote','備注六')">複製</button>
           </div>
           <div class="id-col">
             <div class="id-col-label">交易明細 / 證號</div>
             <div class="id-col-value" id="idTxn"></div>
-            <button class="id-copy-btn" id="idTxnCopyBtn" onclick="copyVal('idTxn','交易明細')">複製</button>
           </div>
         </div>
       </div>
@@ -1251,14 +1227,6 @@ function computeId() {
   const txnEl = document.getElementById('idTxn');
   txnEl.innerHTML   = txnHtml;
   txnEl.className   = 'id-col-value' + (txnWarn ? ' warn' : '');
-  // store plain copy text on button
-  const copyBtn = document.getElementById('idTxnCopyBtn');
-  copyBtn.style.display = txnWarn ? 'none' : '';
-  copyBtn.onclick = () => {
-    navigator.clipboard.writeText(txnCopyText)
-      .then(()  => showToast('已複製：' + txnCopyText))
-      .catch(()  => showToast('複製失敗，請手動長按選取'));
-  };
   document.getElementById('idNote').textContent = note;
 }
 
@@ -1306,41 +1274,79 @@ function openWebsiteAndSave() {
   }
   // 顯示懸浮資料面板
   showFloatPanel(surname, id, email);
-  // 顯示 Modal：若有信箱則顯示信箱供複製，否則提示未輸入
-  const overlay = document.getElementById('urlModalOverlay');
-  const urlText = document.getElementById('urlModalUrlText');
-  const copyBtn = document.getElementById('urlModalCopyBtn');
-  urlText.textContent = email || '（未輸入信箱）';
-  urlText.style.color = email ? 'var(--main)' : 'var(--ink3)';
-  copyBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 複製信箱';
-  copyBtn.classList.remove('copied');
-  copyBtn.disabled = !email;
-  copyBtn.style.opacity = email ? '' : '0.4';
-  overlay.classList.add('show');
+  // 開啟目標網站
+  const a = document.createElement('a');
+  a.href = TARGET_URL;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 /* ─── 懸浮資料面板 ─── */
 function showFloatPanel(surname, id, email) {
   const panel = document.getElementById('floatPanel');
-  // 填入資料
-  document.getElementById('fpName').textContent = (surname || '') + (id ? '  ' + id : '') || '（未輸入）';
-  const webVal = computeWebInput(id);
-  const txnVal = computeTxnVisible(id);
-  document.getElementById('fpHqid').textContent  = webVal;
+
+  // 標題：姓氏 + 學號
+  document.getElementById('fpName').textContent =
+    ((surname || '') + (id ? '  ' + id : '')) || '（未輸入）';
+
+  // 姓氏
+  document.getElementById('fpSurname').textContent = surname || '—';
+
+  // Edu查詢（HQID）
+  document.getElementById('fpHqid').textContent = computeWebInput(id);
+
+  // 信箱
   document.getElementById('fpEmail').textContent = email || '—';
-  document.getElementById('fpNote').textContent  = id || '—';
-  document.getElementById('fpTxn').textContent   = txnVal;
-  // 交易明細警告時隱藏複製
+
+  // 備注六
+  document.getElementById('fpNote').textContent = id || '—';
+
+  // 交易明細：同主卡片的遮擋 HTML
+  const txnEl  = document.getElementById('fpTxn');
   const txnBtn = document.getElementById('fpTxnCopy');
-  const isWarn = !id || idEffLen(id) <= 3;
-  txnBtn.style.display = isWarn ? 'none' : '';
-  // 定位：右下角（避免被 tab bar 擋住）
-  if (!panel.classList.contains('visible')) {
-    panel.style.right  = '16px';
-    panel.style.bottom = '100px';
-    panel.style.left   = 'auto';
-    panel.style.top    = 'auto';
+  if (!id) {
+    txnEl.innerHTML = '<span style="color:rgba(255,255,255,.4)">—</span>';
+    txnBtn.style.display = 'none';
+    txnBtn.dataset.copy = '';
+  } else {
+    const chars = idChars(id);
+    const len   = idEffLen(id);
+    let visibleCount, txnWarn = false;
+    if      (len > 6)   visibleCount = 6;
+    else if (len >= 5)  visibleCount = 4;
+    else if (len === 4) visibleCount = 3;
+    else                { visibleCount = 0; txnWarn = true; }
+    const hiddenCount = len - visibleCount;
+    const txnCopyText = chars.slice(hiddenCount).join('');
+
+    if (txnWarn) {
+      txnEl.innerHTML = '<span style="font-size:11px;color:#FF9EB5;font-weight:700">⚠️ 全部遮擋</span>';
+      txnBtn.style.display = 'none';
+      txnBtn.dataset.copy = '';
+    } else {
+      let html = '';
+      for (let i = 0; i < len; i++) {
+        html += i < hiddenCount
+          ? `<span class="id-masked">${chars[i]}</span>`
+          : `<span class="id-visible">${chars[i]}</span>`;
+      }
+      if (hiddenCount > 0)
+        html += `<div class="id-txn-hint">⚠️ 黑色區塊為需塗黑部分</div>`;
+      txnEl.innerHTML = html;
+      txnBtn.style.display = '';
+      txnBtn.dataset.copy = txnCopyText;
+    }
   }
+
+  // 定位：畫面正中間（每次重新開啟都置中）
+  panel.style.right  = 'auto';
+  panel.style.bottom = 'auto';
+  panel.style.left   = '50%';
+  panel.style.top    = '50%';
+  panel.style.transform = 'translate(-50%,-50%)';
   panel.classList.add('visible');
 }
 
@@ -1349,7 +1355,10 @@ function hideFloatPanel() {
 }
 
 function fpCopy(elId, btn) {
-  const txt = document.getElementById(elId).textContent;
+  // 交易明細用 data-copy 儲存的純文字
+  const txt = btn.dataset.copy !== undefined && btn.dataset.copy !== ''
+    ? btn.dataset.copy
+    : document.getElementById(elId).textContent;
   if (!txt || txt === '—') return;
   navigator.clipboard.writeText(txt).then(() => {
     showToast('已複製：' + txt);
@@ -1370,6 +1379,7 @@ function fpCopy(elId, btn) {
     panelL = r.left; panelT = r.top;
     startX = cx; startY = cy;
     dragging = true;
+    p.style.transform = 'none';
     p.style.right = 'auto'; p.style.bottom = 'auto';
     p.style.left = panelL + 'px'; p.style.top = panelT + 'px';
   }
@@ -1397,36 +1407,6 @@ function fpCopy(elId, btn) {
   });
 })();
 
-function closeUrlModal(e) {
-  // 只有點到背景才關閉（不是點到 modal 本身）
-  if (e && e.target !== document.getElementById('urlModalOverlay')) return;
-  document.getElementById('urlModalOverlay').classList.remove('show');
-}
-
-function copyUrlAndClose() {
-  const email = document.getElementById('urlModalUrlText').textContent;
-  if (!email || email === '（未輸入信箱）') return;
-  const btn = document.getElementById('urlModalCopyBtn');
-  navigator.clipboard.writeText(email).then(() => {
-    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> 已複製！';
-    btn.classList.add('copied');
-    showToast('✅ 信箱已複製，請切換到 Safari 貼上');
-    setTimeout(() => document.getElementById('urlModalOverlay').classList.remove('show'), 1800);
-  }).catch(() => {
-    showToast('複製失敗，請長按信箱手動複製');
-  });
-}
-
-function openInAppBrowser() {
-  document.getElementById('urlModalOverlay').classList.remove('show');
-  const a = document.createElement('a');
-  a.href = TARGET_URL;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
 
 const RECORDS_KEY = 'scan_client_records';
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -2158,9 +2138,16 @@ renderRecords();
     <button class="float-close" onclick="hideFloatPanel()">✕</button>
   </div>
   <div class="float-body">
-    <!-- HQID（網站輸入） -->
+    <!-- 姓氏 -->
     <div class="float-row">
-      <div class="float-row-label">HQID</div>
+      <div class="float-row-label">姓氏</div>
+      <div class="float-row-val" id="fpSurname" style="font-size:17px;font-weight:800;color:#fff">—</div>
+      <button class="float-copy" onclick="fpCopy('fpSurname',this)">複製</button>
+    </div>
+    <hr class="float-divider">
+    <!-- Edu查詢（網站輸入） -->
+    <div class="float-row">
+      <div class="float-row-label">Edu查詢</div>
       <div class="float-row-val mono" id="fpHqid">—</div>
       <button class="float-copy" onclick="fpCopy('fpHqid',this)">複製</button>
     </div>
@@ -2179,34 +2166,15 @@ renderRecords();
       <button class="float-copy" onclick="fpCopy('fpNote',this)">複製</button>
     </div>
     <!-- 交易明細 -->
-    <div class="float-row">
-      <div class="float-row-label">交易明細</div>
-      <div class="float-row-val mono" id="fpTxn">—</div>
-      <button class="float-copy" id="fpTxnCopy" onclick="fpCopy('fpTxn',this)">複製</button>
+    <div class="float-row" style="align-items:flex-start">
+      <div class="float-row-label" style="padding-top:3px">交易明細</div>
+      <div class="float-row-val mono" id="fpTxn" style="white-space:normal;display:flex;flex-wrap:wrap;align-items:center;gap:2px">—</div>
+      <button class="float-copy" id="fpTxnCopy" onclick="fpCopy('fpTxn',this)" style="margin-top:2px">複製</button>
     </div>
   </div>
   <div class="float-drag-hint">☰ 長按標題列可拖動位置</div>
 </div>
 
-<!-- ─── Open-URL Modal ─── -->
-<div class="url-modal-overlay" id="urlModalOverlay" onclick="closeUrlModal(event)">
-  <div class="url-modal">
-    <div class="url-modal-handle"></div>
-    <div class="url-modal-title">✉️ 複製客人信箱</div>
-    <div class="url-modal-sub">複製後切換到 Safari，貼入網站信箱欄位</div>
-    <div class="url-modal-url" id="urlModalUrlText" style="font-size:15px;letter-spacing:.02em"></div>
-    <div class="url-modal-btns">
-      <button class="url-modal-copy-btn" id="urlModalCopyBtn" onclick="copyUrlAndClose()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-        </svg>
-        複製信箱
-      </button>
-      <button class="url-modal-cancel" onclick="openInAppBrowser()">開啟目標網站（需再按右上角 Safari）</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
