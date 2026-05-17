@@ -482,7 +482,7 @@ button{-webkit-appearance:none;font-family:inherit}
   <div class="nav-bar">
     <div class="nav-title-wrap">
       <div class="nav-greet" id="importGreet">早上好</div>
-      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.0</span></div>
+      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.1</span></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <span class="nav-sub" id="importDateTime" style="font-size:11px;gap:5px">—</span>
@@ -685,10 +685,16 @@ button{-webkit-appearance:none;font-family:inherit}
   <div class="editor-bar">
 
     <div class="tool-row" id="toolRow">
-      <button class="tool-btn active" id="btnBrush" onclick="setTool('brush')">
+      <button class="tool-btn" id="btnBrush" onclick="setTool('brush')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
         </svg>畫筆
+      </button>
+      <button class="tool-btn" id="btnEraser" onclick="setTool('eraser')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M20 20H7L3 16l11-11 6 6-4 4"/>
+          <path d="M6.5 17.5l4-4"/>
+        </svg>橡皮擦
       </button>
       <button class="tool-btn" id="btnBlackout" onclick="setTool('blackout')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
@@ -729,6 +735,16 @@ button{-webkit-appearance:none;font-family:inherit}
       <span class="size-label" id="sizeLabel">8</span>
     </div>
 
+    <div class="tool-row" id="zoomRow" style="display:none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink2)" stroke-width="2.2" style="flex-shrink:0">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+      <input type="range" class="size-slider" id="zoomSlider" min="50" max="300" value="100" oninput="applyZoom(+this.value)">
+      <span class="size-label" id="zoomLabel" style="min-width:36px">100%</span>
+      <button class="icon-btn" onclick="resetZoom()" style="width:auto;padding:0 10px;font-size:11px;font-weight:700;height:36px">還原</button>
+    </div>
+
     <div class="tool-row" id="boRow">
       <div style="flex:1">
         <div class="confirm-hint">拖拉角點縮放，拖拉中央移動，完成後確認</div>
@@ -743,7 +759,7 @@ button{-webkit-appearance:none;font-family:inherit}
       <div style="flex:1">
         <div class="confirm-hint">拖拉選擇要裁切的區域</div>
         <div class="confirm-btn-row">
-          <button class="btn-cancel" onclick="setTool('brush')">取消</button>
+          <button class="btn-cancel" onclick="setTool('none')">取消</button>
           <button class="btn-ok"     onclick="confirmCrop()">確認裁切</button>
         </div>
       </div>
@@ -759,7 +775,7 @@ button{-webkit-appearance:none;font-family:inherit}
           <span style="color:var(--pink)">④ 左下</span>
         </div>
         <div class="confirm-btn-row">
-          <button class="btn-cancel" onclick="setTool('brush')">取消</button>
+          <button class="btn-cancel" onclick="setTool('none')">取消</button>
           <button class="btn-ok"     onclick="confirmPersp()">確認矯正</button>
         </div>
       </div>
@@ -1419,6 +1435,90 @@ function fpCopy(elId, btn) {
   }).catch(() => showToast('複製失敗'));
 }
 
+function applyZoom(pct) {
+  document.getElementById('zoomLabel').textContent = pct + '%';
+  const scale = pct / 100;
+  const wrap = document.getElementById('canvasWrap');
+  canvas.style.transformOrigin = 'center center';
+  canvas.style.transform = `scale(${scale})`;
+  // keep centered
+  canvas.style.left = `${(wrap.clientWidth  - canvas.width)  / 2}px`;
+  canvas.style.top  = `${(wrap.clientHeight - canvas.height) / 2}px`;
+}
+
+function resetZoom() {
+  document.getElementById('zoomSlider').value = 100;
+  applyZoom(100);
+}
+
+// ─── 兩指拖移平移（縮放後捲動畫面）───
+(function initTwoPan() {
+  const wrap = document.getElementById('canvasWrap');
+  let panning = false;
+  let lastMidX = 0, lastMidY = 0;
+
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      panning = true;
+      st.isDrawing = false; // 中斷單指繪圖
+      lastMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      lastMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    }
+  }, { passive: true });
+
+  wrap.addEventListener('touchmove', e => {
+    if (!panning || e.touches.length < 2) return;
+    e.preventDefault();
+    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    const dx = midX - lastMidX;
+    const dy = midY - lastMidY;
+    lastMidX = midX; lastMidY = midY;
+
+    const scale = parseFloat(document.getElementById('zoomSlider').value) / 100;
+    const visW  = canvas.width  * scale;
+    const visH  = canvas.height * scale;
+    const wrapW = wrap.clientWidth;
+    const wrapH = wrap.clientHeight;
+    let curL = parseFloat(canvas.style.left) || 0;
+    let curT = parseFloat(canvas.style.top)  || 0;
+    let newL = curL + dx;
+    let newT = curT + dy;
+
+    // 限制不超出範圍
+    const minL = visW > wrapW ? wrapW - visW : (wrapW - visW) / 2;
+    const maxL = visW > wrapW ? 0            : (wrapW - visW) / 2;
+    const minT = visH > wrapH ? wrapH - visH : (wrapH - visH) / 2;
+    const maxT = visH > wrapH ? 0            : (wrapH - visH) / 2;
+    newL = Math.max(minL, Math.min(maxL, newL));
+    newT = Math.max(minT, Math.min(maxT, newT));
+    canvas.style.left = newL + 'px';
+    canvas.style.top  = newT + 'px';
+  }, { passive: false });
+
+  wrap.addEventListener('touchend', e => {
+    if (e.touches.length < 2) panning = false;
+  });
+})();
+
+function eraseAt(x, y, size) {
+  // Restore pixels from history[0] (original image) in a circle
+  if (!st.history.length) return;
+  const orig = st.history[0];
+  const r = size / 2;
+  const offscreen = document.createElement('canvas');
+  offscreen.width  = canvas.width;
+  offscreen.height = canvas.height;
+  const oc = offscreen.getContext('2d');
+  oc.putImageData(orig, 0, 0);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(offscreen, 0, 0);
+  ctx.restore();
+}
+
 // 懸浮面板拖動（支援觸控）
 (function initFloatDrag() {
   let dragging = false, startX = 0, startY = 0, panelL = 0, panelT = 0;
@@ -1539,7 +1639,8 @@ function openEditor(src, idx) {
       fitCanvas(img.width, img.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       saveHist();
-      setTool('brush');
+      setTool('none');
+      resetZoom();
     });
   };
   img.src = arr[idx].url;
@@ -1547,42 +1648,17 @@ function openEditor(src, idx) {
 
 function fitCanvas(imgW, imgH) {
   const wrap = document.getElementById('canvasWrap');
-  // 保持 canvas 原始解析度，只用 CSS scale 縮放顯示
-  canvas.width  = imgW;
-  canvas.height = imgH;
-  canvas.style.transformOrigin = '0 0';
-  const fitS = Math.min(wrap.clientWidth / imgW, wrap.clientHeight / imgH);
-  st.fitScale  = fitS;
-  st.viewScale = fitS;
-  st.panX = 0; st.panY = 0;
-  applyCanvasView();
-}
-
-function applyCanvasView() {
-  const wrap = document.getElementById('canvasWrap');
-  const scale = st.viewScale;
-  const visW  = canvas.width  * scale;
-  const visH  = canvas.height * scale;
-  const wrapW = wrap.clientWidth;
-  const wrapH = wrap.clientHeight;
-  // 置中基礎偏移，加上 panX/Y
-  let l = (wrapW - visW) / 2 + st.panX;
-  let t = (wrapH - visH) / 2 + st.panY;
-  // 縮放時限制不超出邊界
-  if (visW > wrapW) { l = Math.min(0, Math.max(wrapW - visW, l)); }
-  else              { l = (wrapW - visW) / 2; }
-  if (visH > wrapH) { t = Math.min(0, Math.max(wrapH - visH, t)); }
-  else              { t = (wrapH - visH) / 2; }
-  st.panX = l - (wrapW - visW) / 2;
-  st.panY = t - (wrapH - visH) / 2;
-  canvas.style.left      = l + 'px';
-  canvas.style.top       = t + 'px';
-  canvas.style.transform = `scale(${scale})`;
+  const s = Math.min(wrap.clientWidth / imgW, wrap.clientHeight / imgH);
+  canvas.width  = Math.round(imgW * s);
+  canvas.height = Math.round(imgH * s);
+  centerCanvas();
 }
 
 function centerCanvas() {
-  st.panX = 0; st.panY = 0;
-  applyCanvasView();
+  const wrap = document.getElementById('canvasWrap');
+  canvas.style.left = `${(wrap.clientWidth  - canvas.width)  / 2}px`;
+  canvas.style.top  = `${(wrap.clientHeight - canvas.height) / 2}px`;
+  canvas.style.transform = '';
 }
 
 function closeEditor() {
@@ -1600,14 +1676,18 @@ function setTool(tool) {
   st.tool = tool; st.boStart = null;
   // cancel any pending blackout when switching away
   if (tool !== 'blackout' && st.boPending) { restoreLast(); st.boPending = null; st.boDrag = null; }
-  ['brush','blackout','crop','persp'].forEach(t =>
+  ['brush','eraser','blackout','crop','persp'].forEach(t =>
     document.getElementById('btn'+cap(t)).classList.toggle('active', t === tool));
-  document.getElementById('optRow') .style.display = tool === 'brush'   ? 'flex' : 'none';
+  document.getElementById('optRow') .style.display = (tool === 'brush' || tool === 'eraser') ? 'flex' : 'none';
   document.getElementById('boRow')  .style.display = 'none';
   document.getElementById('cropRow').style.display = tool === 'crop'    ? 'flex' : 'none';
   document.getElementById('perspRow').style.display= tool === 'persp'   ? 'flex' : 'none';
-  document.getElementById('sizeSlider').style.display = tool === 'brush' ? '' : 'none';
-  document.getElementById('sizeLabel').style.display  = tool === 'brush' ? '' : 'none';
+  document.getElementById('sizeSlider').style.display = (tool === 'brush' || tool === 'eraser') ? '' : 'none';
+  document.getElementById('sizeLabel').style.display  = (tool === 'brush' || tool === 'eraser') ? '' : 'none';
+  const showColor = tool === 'brush';
+  document.getElementById('colorSwatch').parentElement.style.display = showColor ? '' : 'none';
+  document.getElementById('zoomRow').style.display = (tool === 'crop' || tool === 'persp') ? 'none' : 'flex';
+  if (tool === 'none') return; // 無工具狀態，不做額外初始化
   if (tool === 'brush') {
     const col = st.colors[tool];
     document.getElementById('colorPicker').value = col;
@@ -1674,6 +1754,9 @@ canvas.addEventListener('pointerdown', e => {
     st.isDrawing = true; st.lx = p.x; st.ly = p.y;
     ctx.beginPath(); ctx.arc(p.x, p.y, st.brushSize/2, 0, Math.PI*2);
     ctx.fillStyle = st.colors.brush; ctx.fill();
+  } else if (st.tool === 'eraser') {
+    st.isDrawing = true;
+    eraseAt(p.x, p.y, st.brushSize * 3);
   } else if (st.tool === 'blackout') {
     if (st.boPending) {
       // hit-test handles or body for move/resize
@@ -1698,6 +1781,8 @@ canvas.addEventListener('pointermove', e => {
     ctx.strokeStyle = st.colors.brush; ctx.lineWidth = st.brushSize;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
     st.lx = p.x; st.ly = p.y;
+  } else if (st.tool === 'eraser' && st.isDrawing) {
+    eraseAt(p.x, p.y, st.brushSize * 3);
   } else if (st.tool === 'blackout') {
     if (st.boStart) {
       restoreLast();
@@ -1720,7 +1805,7 @@ canvas.addEventListener('pointermove', e => {
 canvas.addEventListener('pointerup', e => {
   e.preventDefault();
   const p = getPos(e);
-  if (st.tool === 'brush' && st.isDrawing) {
+  if ((st.tool === 'brush' || st.tool === 'eraser') && st.isDrawing) {
     st.isDrawing = false; saveHist();
   } else if (st.tool === 'blackout') {
     if (st.boStart) {
@@ -1742,98 +1827,11 @@ canvas.addEventListener('pointerup', e => {
 }, {passive:false});
 
 canvas.addEventListener('pointerleave', () => {
-  if (st.tool === 'brush' && st.isDrawing) { st.isDrawing = false; saveHist(); }
+  if ((st.tool === 'brush' || st.tool === 'eraser') && st.isDrawing) { st.isDrawing = false; saveHist(); }
   if (st.tool === 'blackout') st.boDrag = null;
   if (st.tool === 'persp') st.activeHandle = -1;
 });
 
-// ─── 雙指縮放 + 單指拖移（縮放時）───
-(function initPinchZoom() {
-  const wrap = document.getElementById('canvasWrap');
-  let pinching  = false;
-  let panning   = false;  // 縮放後單指拖移
-  let startDist = 0, startScale = 1;
-  let startMid  = { x: 0, y: 0 };
-  let startPan  = { x: 0, y: 0 };
-  let panStart  = { x: 0, y: 0 };
-
-  function dist(t)  { return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
-  function mid(t)   { return { x:(t[0].clientX+t[1].clientX)/2, y:(t[0].clientY+t[1].clientY)/2 }; }
-  function wrapRect(){ return wrap.getBoundingClientRect(); }
-
-  wrap.addEventListener('touchstart', e => {
-    if (e.touches.length === 2) {
-      pinching = true; panning = false;
-      st.isDrawing = false;
-      startDist  = dist(e.touches);
-      startScale = st.viewScale;
-      startMid   = mid(e.touches);
-      startPan   = { x: st.panX, y: st.panY };
-      e.preventDefault();
-    } else if (e.touches.length === 1 && st.viewScale > st.fitScale + 0.01) {
-      // 放大狀態下單指拖移畫面
-      panning = true;
-      panStart = { x: e.touches[0].clientX - st.panX, y: e.touches[0].clientY - st.panY };
-    }
-  }, { passive: false });
-
-  wrap.addEventListener('touchmove', e => {
-    if (pinching && e.touches.length === 2) {
-      e.preventDefault();
-      const newScale = Math.max(st.fitScale, Math.min(st.fitScale * 6, startScale * dist(e.touches) / startDist));
-      const curMid   = mid(e.touches);
-      const wRect    = wrapRect();
-      // 兩指中點在 wrap 內的位置
-      const pivotX   = startMid.x - wRect.left;
-      const pivotY   = startMid.y - wRect.top;
-      const wrapW    = wrap.clientWidth, wrapH = wrap.clientHeight;
-      // 縮放前後以兩指中點為錨點計算 pan 偏移
-      const baseL0 = (wrapW - canvas.width  * startScale) / 2 + startPan.x;
-      const baseT0 = (wrapH - canvas.height * startScale) / 2 + startPan.y;
-      const ratioX = (pivotX - baseL0) / (canvas.width  * startScale);
-      const ratioY = (pivotY - baseT0) / (canvas.height * startScale);
-      const visW1  = canvas.width  * newScale;
-      const visH1  = canvas.height * newScale;
-      const newBaseL = (wrapW - visW1) / 2;
-      const newBaseT = (wrapH - visH1) / 2;
-      const newL  = pivotX - ratioX * visW1 + (curMid.x - startMid.x);
-      const newT  = pivotY - ratioY * visH1 + (curMid.y - startMid.y);
-      st.viewScale = newScale;
-      st.panX = newL - newBaseL;
-      st.panY = newT - newBaseT;
-      applyCanvasView();
-    } else if (panning && e.touches.length === 1 && !pinching) {
-      e.preventDefault();
-      st.panX = e.touches[0].clientX - panStart.x;
-      st.panY = e.touches[0].clientY - panStart.y;
-      applyCanvasView();
-    }
-  }, { passive: false });
-
-  wrap.addEventListener('touchend', e => {
-    if (e.touches.length < 2) pinching = false;
-    if (e.touches.length === 0) {
-      panning = false;
-      // 縮放還原最小時自動置中
-      if (st.viewScale <= st.fitScale + 0.01) {
-        st.viewScale = st.fitScale;
-        centerCanvas();
-      }
-    }
-  });
-
-  // 雙擊還原置中
-  let lastTap = 0;
-  wrap.addEventListener('touchend', e => {
-    if (e.touches.length > 0) return;
-    const now = Date.now();
-    if (now - lastTap < 280) {
-      st.viewScale = st.fitScale;
-      centerCanvas();
-    }
-    lastTap = now;
-  });
-})();
 
 function clampToCanvas(p) {
   return { x: Math.max(0, Math.min(canvas.width,  p.x)),
@@ -1855,7 +1853,7 @@ function drawBlackoutPending() {
   ctx.strokeRect(x, y, w, h);
   ctx.setLineDash([]);
   // corner + edge-mid handles
-  const HR = 10; // handle radius
+  const HR = 5; // handle radius
   const handles = [
     [x,y],[x+w,y],[x,y+h],[x+w,y+h],
     [x+w/2,y],[x+w/2,y+h],[x,y+h/2],[x+w,y+h/2]
@@ -1863,7 +1861,7 @@ function drawBlackoutPending() {
   handles.forEach(([hx,hy]) => {
     ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
     ctx.fillStyle = '#fff'; ctx.fill();
-    ctx.strokeStyle = 'rgba(58,141,255,.95)'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.strokeStyle = 'rgba(58,141,255,.95)'; ctx.lineWidth = 2; ctx.stroke();
   });
   ctx.restore();
 }
@@ -1871,7 +1869,7 @@ function drawBlackoutPending() {
 function boHitTest(p) {
   if (!st.boPending) return null;
   const {x, y, w, h} = st.boPending;
-  const R = 22;
+  const R = 14;
   const handles = [
     ['nw', x,     y    ], ['ne', x+w,   y    ],
     ['sw', x,     y+h  ], ['se', x+w,   y+h  ],
@@ -1962,7 +1960,7 @@ function confirmCrop() {
   centerCanvas();
   st.history = []; saveHist();
   st.cropStart = st.cropEnd = null;
-  setTool('brush'); showToast('裁切完成', true);
+  setTool('none'); showToast('裁切完成', true);
 }
 
 function closestHandle(pos) {
@@ -1998,14 +1996,14 @@ function drawPerspOverlay() {
   pts.forEach((p, i) => {
     const active = i === st.activeHandle;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, active ? 22 : 18, 0, Math.PI*2);
+    ctx.arc(p.x, p.y, active ? 14 : 10, 0, Math.PI*2);
     ctx.fillStyle = active ? '#fff' : HANDLE_COLORS[i];
     ctx.fill();
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = active ? 3 : 2.5;
     ctx.stroke();
     ctx.fillStyle = active ? HANDLE_COLORS[i] : '#fff';
-    ctx.font = 'bold 13px "Plus Jakarta Sans",sans-serif';
+    ctx.font = 'bold 10px "Plus Jakarta Sans",sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(i + 1, p.x, p.y);
   });
@@ -2029,7 +2027,7 @@ async function confirmPersp() {
   centerCanvas();
   st.history = []; saveHist();
   st.perspHandles = [];
-  setTool('brush');
+  setTool('none');
   showToast('透視矯正完成', true);
 }
 
