@@ -389,6 +389,34 @@ button{-webkit-appearance:none;font-family:inherit}
   box-shadow:0 3px 8px rgba(58,141,255,.35);margin-top:auto}
 .id-copy-btn:active{opacity:.8;transform:scale(.96)}
 .id-col-value{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px}
+
+/* ─── Client Form ─── */
+.form-field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.form-label{font-size:12px;font-weight:700;color:var(--ink2)}
+.form-input{border:1.5px solid var(--surf3);border-radius:14px;
+  padding:11px 14px;font-size:15px;font-family:inherit;
+  background:var(--surf);color:var(--ink);outline:none;
+  -webkit-appearance:none;width:100%}
+.form-input:focus{border-color:var(--main);box-shadow:0 0 0 3px rgba(58,141,255,.15)}
+.form-open-btn{width:100%;justify-content:center;margin-top:4px;font-size:14px}
+.form-divider{border:none;border-top:1px solid var(--line);margin:14px 0 6px}
+.form-split-label{font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:8px}
+
+/* ─── Records ─── */
+.records-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.records-clear-btn{font-size:11px;color:var(--danger);font-weight:700;
+  border:none;background:none;cursor:pointer;font-family:inherit;padding:4px 0}
+.record-item{background:var(--surf2);border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.record-item:last-child{margin-bottom:0}
+.record-main{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:3px}
+.record-sub{font-size:11px;color:var(--ink2);margin-bottom:8px}
+.record-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:4px}
+.record-col{text-align:center;background:rgba(255,255,255,.6);
+  border-radius:10px;padding:6px 4px}
+.record-col-label{font-size:9px;font-weight:700;color:var(--ink3);margin-bottom:2px}
+.record-col-val{font-size:12px;font-weight:800;color:var(--ink)}
+.record-time{font-size:10px;color:var(--ink3);text-align:right}
+.records-empty{font-size:13px;color:var(--ink3);text-align:center;padding:16px 0}
 .id-txn-hint{font-size:10px;color:var(--danger);font-weight:700;margin-top:2px;width:100%;text-align:center;letter-spacing:.02em}
 .id-masked{display:inline-flex;align-items:center;justify-content:center;
   background:#1e1e1e;color:#888;border-radius:4px;
@@ -405,10 +433,13 @@ button{-webkit-appearance:none;font-family:inherit}
 <div id="importScreen" class="screen active">
   <div class="nav-bar">
     <div class="nav-title-wrap">
-      <div class="nav-greet">從網頁抓畫面</div>
-      <div class="nav-title">網頁<em>截圖</em></div>
+      <div class="nav-greet" id="importGreet">早上好</div>
+      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v2.7</span></div>
     </div>
-    <span class="nav-sub" id="importCount">0 / 5<span class="ver-badge">v2.4</span></span>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <span class="nav-sub" id="importDateTime" style="font-size:11px;gap:5px">—</span>
+      <span class="nav-sub" id="importWeather" style="font-size:11px;gap:5px">🌡 載入中…</span>
+    </div>
   </div>
   <div class="page-scroll">
     <div class="manual-entry" onclick="openManual()">
@@ -425,59 +456,64 @@ button{-webkit-appearance:none;font-family:inherit}
       <div class="manual-arrow">›</div>
     </div>
     <div class="id-tool-card">
-      <div class="id-tool-title">🔢 <span id="idTitleText">學號 / 證號拆分</span></div>
-      <div class="id-input-row">
-        <input class="id-input" id="idInput" type="text"
+      <div class="id-tool-title">👤 <span id="idTitleText">客人資料</span></div>
+      <!-- 姓氏 -->
+      <div class="form-field">
+        <label class="form-label">姓氏</label>
+        <input class="form-input" id="fSurname" type="text" placeholder="例：王" autocomplete="off">
+      </div>
+      <!-- 學號 -->
+      <div class="form-field">
+        <label class="form-label">學號 / 教職員證號</label>
+        <input class="form-input" id="idInput" type="text"
           placeholder="輸入學號或教職員證號"
           oninput="computeId()" autocomplete="off"
           autocorrect="off" autocapitalize="none" spellcheck="false">
-        <button class="step-btn" onclick="clearId()">清除</button>
       </div>
-      <div class="id-cols" id="idCols" style="display:none">
-        <div class="id-col">
-          <div class="id-col-label">網站輸入</div>
-          <div class="id-col-value" id="idWeb" style="font-size:20px;font-weight:800;color:var(--ink);letter-spacing:.06em"></div>
-          <button class="id-copy-btn" onclick="copyVal('idWeb','網站輸入')">複製</button>
-        </div>
-        <div class="id-col">
-          <div class="id-col-label">備注六</div>
-          <div class="id-col-value" id="idNote" style="font-size:20px;font-weight:800;color:var(--ink);letter-spacing:.06em;word-break:break-all"></div>
-          <button class="id-copy-btn" onclick="copyVal('idNote','備注六')">複製</button>
-        </div>
-        <div class="id-col">
-          <div class="id-col-label">交易明細 / 證號</div>
-          <div class="id-col-value" id="idTxn"></div>
-          <button class="id-copy-btn" id="idTxnCopyBtn" onclick="copyVal('idTxn','交易明細')">複製</button>
+      <!-- 電子信箱 -->
+      <div class="form-field" style="margin-bottom:14px">
+        <label class="form-label">電子信箱</label>
+        <input class="form-input" id="fEmail" type="email" placeholder="example@mail.com" autocomplete="off">
+      </div>
+      <!-- 開啟網站按鈕 -->
+      <button class="step-btn primary form-open-btn" onclick="openWebsiteAndSave()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        在 Safari 開啟並儲存記錄
+      </button>
+      <!-- 學號拆分結果 -->
+      <div id="idCols" style="display:none">
+        <hr class="form-divider">
+        <div class="form-split-label">🔢 學號拆分</div>
+        <div class="id-cols">
+          <div class="id-col">
+            <div class="id-col-label">網站輸入</div>
+            <div class="id-col-value" id="idWeb" style="font-size:20px;font-weight:800;color:var(--ink);letter-spacing:.06em"></div>
+            <button class="id-copy-btn" onclick="copyVal('idWeb','網站輸入')">複製</button>
+          </div>
+          <div class="id-col">
+            <div class="id-col-label">備注六</div>
+            <div class="id-col-value" id="idNote" style="font-size:20px;font-weight:800;color:var(--ink);letter-spacing:.06em;word-break:break-all"></div>
+            <button class="id-copy-btn" onclick="copyVal('idNote','備注六')">複製</button>
+          </div>
+          <div class="id-col">
+            <div class="id-col-label">交易明細 / 證號</div>
+            <div class="id-col-value" id="idTxn"></div>
+            <button class="id-copy-btn" id="idTxnCopyBtn" onclick="copyVal('idTxn','交易明細')">複製</button>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="workflow-card">
-      <div class="workflow-step">
-        <div class="step-num">1</div>
-        <div class="step-body">
-          <div class="step-title">開啟目標網站</div>
-          <div class="step-url">https://www.eduwebportal.com/login.php</div>
-          <button class="step-btn primary" onclick="openWebsite()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="2" y1="12" x2="22" y2="12"/>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            在 Safari 開啟
-          </button>
-        </div>
+    <div class="id-tool-card" id="recordsCard">
+      <div class="records-header">
+        <div class="id-tool-title" style="margin-bottom:0">📋 操作記錄</div>
+        <button class="records-clear-btn" onclick="clearRecords()">全部清除</button>
       </div>
-      <div class="workflow-step">
-        <div class="step-num">2</div>
-        <div class="step-body">
-          <div class="step-title">截取畫面（最多 5 張）</div>
-          <div class="step-desc">
-            iPad：同時按 <span class="kbd">電源</span> + <span class="kbd">音量＋</span><br>
-            截圖會自動存入「照片」App
-          </div>
-        </div>
-      </div>
+      <div id="recordsList"></div>
     </div>
   </div>
 </div>
@@ -827,6 +863,70 @@ const st = {
 // ═══════════════════════════════════════════════
 //  GREETING
 // ═══════════════════════════════════════════════
+// ─── Import nav: clock + greeting + weather ───
+const DAYS_TW = ['日','一','二','三','四','五','六'];
+function updateImportClock() {
+  const now = new Date(new Date().toLocaleString('en-US', {timeZone:'Asia/Taipei'}));
+  const h = now.getHours(), m = now.getMinutes();
+  const day = DAYS_TW[now.getDay()];
+  const s = now.getSeconds();
+  const dateStr = `${now.getMonth()+1}/${now.getDate()}（${day}） ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const el = document.getElementById('importDateTime');
+  if (el) el.textContent = dateStr;
+  // greeting
+  let greet = h < 6 ? '深夜好' : h < 12 ? '早上好' : h < 18 ? '下午好' : '晚上好';
+  const gel = document.getElementById('importGreet');
+  if (gel) gel.textContent = greet;
+}
+
+const WMO = {0:'☀️ 晴天',1:'🌤 多雲',2:'⛅ 陰天',3:'☁️ 陰',45:'🌫 霧',48:'🌫 霧',
+  51:'🌦 毛毛雨',53:'🌦 小雨',55:'🌧 雨',61:'🌧 小雨',63:'🌧 雨',65:'🌧 大雨',
+  71:'❄️ 小雪',73:'❄️ 雪',75:'❄️ 大雪',80:'🌦 陣雨',81:'🌧 陣雨',82:'⛈ 豪雨',
+  95:'⛈ 雷雨',96:'⛈ 雷雨',99:'⛈ 雷雨'};
+
+let lastLocationName = '';
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=zh-TW`);
+    const d = await r.json();
+    const a = d.address || {};
+    // 優先取區（city_district / suburb / town），再取市，最後取縣
+    lastLocationName = a.city_district || a.suburb || a.town || a.village || a.city || a.county || '';
+  } catch { lastLocationName = ''; }
+}
+
+async function fetchWeatherAt(lat, lon) {
+  const el = document.getElementById('importWeather');
+  if (!el) return;
+  try {
+    // 並行取位置名稱 + 天氣資料
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Taipei';
+    const [, weatherRes] = await Promise.all([
+      reverseGeocode(lat, lon),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=${encodeURIComponent(tz)}`)
+    ]);
+    const d = await weatherRes.json();
+    const temp = Math.round(d.current.temperature_2m);
+    const desc = WMO[d.current.weather_code] || '🌡';
+    el.textContent = lastLocationName
+      ? `📍 ${lastLocationName} ${desc} ${temp}°C`
+      : `${desc} ${temp}°C`;
+  } catch { el.textContent = '🌡 無法取得天氣'; }
+}
+
+function fetchTaipeiWeather() {
+  const el = document.getElementById('importWeather');
+  if (!el) return;
+  if (!navigator.geolocation) { fetchWeatherAt(25.033, 121.565); return; }
+  el.textContent = '📍 定位中…';
+  navigator.geolocation.getCurrentPosition(
+    pos => fetchWeatherAt(pos.coords.latitude, pos.coords.longitude),
+    ()  => fetchWeatherAt(25.033, 121.565), // 定位失敗退回台北
+    { timeout: 8000, maximumAge: 5 * 60 * 1000 }
+  );
+}
+
 function setGreeting() {
   const h = new Date().getHours();
   let g = '嗨 早安 ☀️';
@@ -1011,7 +1111,7 @@ function idChars(id)  { return id.match(/[a-zA-Z0-9]/g) || []; }
 function computeId() {
   const id   = document.getElementById('idInput').value.trim();
   const cols = document.getElementById('idCols');
-  document.getElementById('idTitleText').textContent = id || '學號 / 證號拆分';
+  document.getElementById('idTitleText').textContent = id ? `學號：${id}` : '客人資料';
   if (!id) { cols.style.display = 'none'; return; }
   cols.style.display = 'grid';
   const len   = idEffLen(id);
@@ -1068,7 +1168,7 @@ function computeId() {
 function clearId() {
   document.getElementById('idInput').value = '';
   document.getElementById('idCols').style.display = 'none';
-  document.getElementById('idTitleText').textContent = '學號 / 證號拆分';
+  document.getElementById('idTitleText').textContent = '客人資料';
 }
 
 function copyVal(elId, label) {
@@ -1078,9 +1178,80 @@ function copyVal(elId, label) {
     .catch(()  => showToast('複製失敗，請手動長按選取'));
 }
 
-function openWebsite() {
+function openWebsiteAndSave() {
+  const surname = document.getElementById('fSurname').value.trim();
+  const id      = document.getElementById('idInput').value.trim();
+  const email   = document.getElementById('fEmail').value.trim();
+  if (surname || id || email) {
+    const recs = getRecords();
+    recs.unshift({ surname, id, email, location: lastLocationName, ts: Date.now() });
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(recs));
+    renderRecords();
+  }
   window.open(TARGET_URL, '_blank');
   showToast('已開啟網站，截圖後回來此 App 繼續操作');
+}
+
+const RECORDS_KEY = 'scan_client_records';
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getRecords() {
+  try {
+    const all = JSON.parse(localStorage.getItem(RECORDS_KEY) || '[]');
+    const cutoff = Date.now() - WEEK_MS;
+    return all.filter(r => r.ts >= cutoff);
+  } catch { return []; }
+}
+
+function clearRecords() {
+  const pw = prompt('請輸入管理員密碼：');
+  if (pw === null) return; // 取消
+  if (pw !== '068no1') { showToast('密碼錯誤'); return; }
+  localStorage.removeItem(RECORDS_KEY);
+  renderRecords();
+  showToast('已清除所有記錄');
+}
+
+function computeWebInput(id) {
+  const chars = idChars(id), len = idEffLen(id);
+  if (!len) return '—';
+  return len > 6 ? chars.slice(-6).join('') : chars.slice(-4).join('').padStart(6, '0');
+}
+
+function computeTxnVisible(id) {
+  const chars = idChars(id), len = idEffLen(id);
+  if (!len) return '—';
+  if (len > 6)   return chars.slice(-6).join('');
+  if (len >= 5)  return chars.slice(-4).join('');
+  if (len === 4) return chars.slice(-3).join('');
+  return '全部遮擋';
+}
+
+function renderRecords() {
+  const list = document.getElementById('recordsList');
+  if (!list) return;
+  const recs = getRecords();
+  if (!recs.length) {
+    list.innerHTML = '<div class="records-empty">尚無記錄</div>';
+    return;
+  }
+  list.innerHTML = recs.map(r => {
+    const web  = computeWebInput(r.id);
+    const note = r.id || '—';
+    const txn  = computeTxnVisible(r.id);
+    const d    = new Date(r.ts);
+    const time = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return `<div class="record-item">
+      <div class="record-main">${r.surname || '—'} ・ ${r.id || '—'}</div>
+      <div class="record-sub">${r.email || '—'}</div>
+      <div class="record-cols">
+        <div class="record-col"><div class="record-col-label">網站輸入</div><div class="record-col-val">${web}</div></div>
+        <div class="record-col"><div class="record-col-label">備注六</div><div class="record-col-val">${note}</div></div>
+        <div class="record-col"><div class="record-col-label">交易明細</div><div class="record-col-val">${txn}</div></div>
+      </div>
+      <div class="record-time">${r.location ? `📍 ${r.location} ・ ` : ''}${time}</div>
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════
@@ -1583,8 +1754,13 @@ function closeManual() {
 // ═══════════════════════════════════════════════
 setGreeting();
 setInterval(setGreeting, 60 * 1000);
+updateImportClock();
+setInterval(updateImportClock, 1000);
+fetchTaipeiWeather();
+setInterval(fetchTaipeiWeather, 10 * 60 * 1000); // 每10分鐘更新
 renderScan();
 renderImport();
+renderRecords();
 </script>
 
 <!-- ══ Manual Overlay ══ -->
