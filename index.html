@@ -159,7 +159,6 @@ html,body{height:100%;background:var(--bg);color:var(--ink);
 /* ─── Camera ─── */
 #cameraScreen{background:#000}
 #cameraVideo{flex:1;width:100%;object-fit:cover}
-#faceOverlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
 .camera-bar{position:absolute;bottom:0;left:0;right:0;padding:20px;
   padding-bottom:max(28px,env(safe-area-inset-bottom));
   display:flex;align-items:center;justify-content:space-between;
@@ -170,7 +169,7 @@ html,body{height:100%;background:var(--bg);color:var(--ink);
   box-shadow:0 0 0 4px rgba(58,141,255,.4)}
 .shutter:active .shutter-inner{transform:scale(.85)}
 .shutter-inner{width:58px;height:58px;border-radius:50%;background:#fff;transition:transform .1s}
-.cam-btn{width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.2);
+.cam-btn{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.2);
   color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
   backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.15)}
 .cam-count{position:absolute;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
@@ -396,14 +395,14 @@ button{-webkit-appearance:none;font-family:inherit}
 .id-col{background:var(--surf2);border-radius:16px;padding:12px 10px;text-align:center;
   display:flex;flex-direction:column;align-items:center;gap:6px}
 .id-col-label{font-size:13px;font-weight:700;color:var(--ink2);letter-spacing:.02em}
-.id-col-value{line-height:1.2;min-height:26px;word-break:break-all}
+.id-col-value{line-height:1.2;min-height:26px;word-break:break-all;
+  display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px}
 .id-col-value.warn{font-size:11px;color:var(--danger);font-weight:700}
 .id-copy-btn{border:none;background:var(--main);color:#fff;
   font-size:11px;font-weight:700;font-family:inherit;
   padding:5px 14px;border-radius:999px;cursor:pointer;
   box-shadow:0 3px 8px rgba(58,141,255,.35);margin-top:auto}
 .id-copy-btn:active{opacity:.8;transform:scale(.96)}
-.id-col-value{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px}
 
 /* ─── Client Form ─── */
 .form-field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
@@ -506,7 +505,7 @@ button{-webkit-appearance:none;font-family:inherit}
   <div class="nav-bar">
     <div class="nav-title-wrap">
       <div class="nav-greet" id="importGreet">早上好</div>
-      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.7</span></div>
+      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v3.8</span></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <span class="nav-sub" id="importDateTime" style="font-size:11px;gap:5px">—</span>
@@ -731,7 +730,6 @@ button{-webkit-appearance:none;font-family:inherit}
 
 <!-- ══ Editor ══ -->
 <div id="editorScreen" class="screen">
-  <div class="aurora" style="position:absolute"><i></i><div class="sun"></div></div>
   <div class="editor-top">
     <button class="back-btn" onclick="closeEditor()">
       <svg width="9" height="15" viewBox="0 0 9 15" fill="none">
@@ -976,7 +974,8 @@ const TARGET_URL = 'https://www.eduwebportal.com/login.php';
 const HANDLE_COLORS = ['#1E6FE6','#FFD466','#7BE3B4','#FFB5D8'];
 
 const st = {
-  scanned:  [],   // {url, faces[]}
+  scanned:  [],
+  eraseCanvas: null,  // 快取的 offscreen canvas（橡皮擦用）
   imported: [],
   editSrc:  null,
   editIdx:  -1,
@@ -1063,6 +1062,7 @@ function fetchTaipeiWeather() {
 }
 
 function setGreeting() {
+  if (st.currentTab !== 'scan') return;  // 非截圖頁不需更新
   const h = new Date().getHours();
   let g = '嗨 早安 ☀️';
   if (h >= 5  && h < 11) g = '嗨 早安 ☀️';
@@ -1154,10 +1154,9 @@ function makeCard(url, idx, src, showSrcBadge) {
   card.querySelector('.del-btn').onclick = e => {
     e.stopPropagation();
     (src === 'scan' ? st.scanned : st.imported).splice(idx, 1);
-    if (src === 'scan')   renderScan();
+    if (src === 'scan')   renderScan();   // 內含 updateBadges()
     if (src === 'import') renderImport();
-    if (st.currentTab === 'export') renderExport();
-    updateBadges();
+    if (st.currentTab === 'export') renderExport();  // 內含 updateBadges()
   };
   card.onclick = () => openEditor(src, idx);
   return card;
@@ -1194,11 +1193,23 @@ function closeCamera() {
 function stopStream() { st.stream?.getTracks().forEach(t => t.stop()); st.stream = null; }
 
 async function flipCamera() {
-  st.facing = st.facing === 'environment' ? 'user' : 'environment';
+  const prev = st.facing;
+  st.facing = prev === 'environment' ? 'user' : 'environment';
   stopStream();
-  st.stream = await navigator.mediaDevices.getUserMedia({
-    video:{facingMode:st.facing}, audio:false });
-  document.getElementById('cameraVideo').srcObject = st.stream;
+  try {
+    st.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: st.facing }, audio: false });
+    document.getElementById('cameraVideo').srcObject = st.stream;
+  } catch (err) {
+    // 切換失敗（無前鏡頭或權限拒絕）→ 還原並重新啟動原始鏡頭
+    st.facing = prev;
+    showToast('無法切換鏡頭：' + (err.message || err.name));
+    try {
+      st.stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: st.facing }, audio: false });
+      document.getElementById('cameraVideo').srcObject = st.stream;
+    } catch { closeCamera(); }
+  }
 }
 
 function capturePhoto() {
@@ -1214,9 +1225,18 @@ function capturePhoto() {
 }
 
 function handleCamera(input) {
-  Array.from(input.files).slice(0, MAX - st.scanned.length).forEach(f => {
+  const files = Array.from(input.files).slice(0, MAX - st.scanned.length);
+  if (!files.length) { input.value = ''; return; }
+  let loaded = 0;
+  files.forEach(f => {
     const r = new FileReader();
-    r.onload = e => { st.scanned.push({url:e.target.result}); renderScan(); };
+    r.onload = e => {
+      st.scanned.push({ url: e.target.result });
+      if (++loaded === files.length) {
+        renderScan();
+        showToast(`已加入 ${files.length} 張照片`);
+      }
+    };
     r.readAsDataURL(f);
   });
   input.value = '';
@@ -1322,23 +1342,6 @@ function copyVal(elId, label) {
     .catch(()  => showToast('複製失敗，請手動長按選取'));
 }
 
-function copyEmail() {
-  const email = document.getElementById('fEmail').value.trim();
-  if (!email) { showToast('請先輸入電子信箱'); return; }
-  const btn = document.getElementById('emailCopyBtn');
-  navigator.clipboard.writeText(email).then(() => {
-    showToast('已複製：' + email);
-    const orig = btn.textContent;
-    btn.textContent = '✓';
-    btn.style.background = '#7BE3B4';
-    btn.style.color = 'var(--ink)';
-    setTimeout(() => {
-      btn.textContent = orig;
-      btn.style.background = '';
-      btn.style.color = '';
-    }, 1800);
-  }).catch(() => showToast('複製失敗，請手動長按選取'));
-}
 
 function isEduEmail(email) {
   if (!email) return false;
@@ -1395,6 +1398,10 @@ const TW_UNIVERSITIES = [
   '國立空中大學','高雄市立空中大學'
 ];
 
+function escHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function searchSchool() {
   const inp = document.getElementById('fSchool');
   const q   = inp.value.trim();
@@ -1402,9 +1409,11 @@ function searchSchool() {
   if (!q) { dd.classList.remove('open'); dd.innerHTML = ''; return; }
   const matches = TW_UNIVERSITIES.filter(n => n.includes(q)).slice(0, 12);
   if (!matches.length) { dd.classList.remove('open'); dd.innerHTML = ''; return; }
+  const qEsc = escHtml(q);
   dd.innerHTML = matches.map(n => {
-    const hi = n.replace(q, `<mark>${q}</mark>`);
-    return `<div class="school-option" ontouchend="selectSchool('${n}')" onclick="selectSchool('${n}')">${hi}</div>`;
+    // 全域替換所有出現位置，並對內容做 XSS 防護
+    const hi = escHtml(n).replaceAll(qEsc, `<mark>${qEsc}</mark>`);
+    return `<div class="school-option" onclick="selectSchool('${escHtml(n)}')">${hi}</div>`;
   }).join('');
   dd.classList.add('open');
 }
@@ -1645,20 +1654,14 @@ function resetZoom() {
 })();
 
 function eraseAt(x, y, size) {
-  // Restore pixels from history[0] (original image) in a circle
-  if (!st.history.length) return;
-  const orig = st.history[0];
+  // 從快取的 offscreen canvas（原圖）還原圓形區域，避免每次 pointermove 重建
+  if (!st.eraseCanvas) return;
   const r = size / 2;
-  const offscreen = document.createElement('canvas');
-  offscreen.width  = canvas.width;
-  offscreen.height = canvas.height;
-  const oc = offscreen.getContext('2d');
-  oc.putImageData(orig, 0, 0);
   ctx.save();
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.clip();
-  ctx.drawImage(offscreen, 0, 0);
+  ctx.drawImage(st.eraseCanvas, 0, 0);
   ctx.restore();
 }
 
@@ -1686,9 +1689,9 @@ function eraseAt(x, y, size) {
     p.style.top  = Math.max(8, Math.min(maxT, panelT + dy)) + 'px';
   }
   function onEnd() { dragging = false; }
-  document.addEventListener('DOMContentLoaded', () => {
-    const handle = document.getElementById('floatDragHandle');
-    if (!handle) return;
+  // 腳本在 </body> 之前，DOM 已就緒，直接綁定（不需 DOMContentLoaded）
+  const handle = document.getElementById('floatDragHandle');
+  if (handle) {
     // Touch
     handle.addEventListener('touchstart', e => { const t=e.touches[0]; onStart(t.clientX,t.clientY); }, {passive:true});
     handle.addEventListener('touchmove',  e => { e.preventDefault(); const t=e.touches[0]; onMove(t.clientX,t.clientY); }, {passive:false});
@@ -1697,7 +1700,7 @@ function eraseAt(x, y, size) {
     handle.addEventListener('mousedown',  e => onStart(e.clientX, e.clientY));
     document.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
     document.addEventListener('mouseup',   onEnd);
-  });
+  }
 })();
 
 
@@ -1708,7 +1711,10 @@ function getRecords() {
   try {
     const all = JSON.parse(localStorage.getItem(RECORDS_KEY) || '[]');
     const cutoff = Date.now() - WEEK_MS;
-    return all.filter(r => r.ts >= cutoff);
+    const fresh = all.filter(r => r.ts >= cutoff);
+    // 若有過期項目被過濾掉，寫回清理後的資料
+    if (fresh.length < all.length) localStorage.setItem(RECORDS_KEY, JSON.stringify(fresh));
+    return fresh;
   } catch { return []; }
 }
 
@@ -1771,7 +1777,7 @@ const ctx    = canvas.getContext('2d');
 
 function openEditor(src, idx) {
   st.editSrc = src; st.editIdx = idx;
-  st.history = []; st.cropStart = st.cropEnd = null; st.perspHandles = [];
+  st.history = []; st.eraseCanvas = null; st.cropStart = st.cropEnd = null; st.perspHandles = [];
   document.getElementById('editorTitle').textContent =
     `${src==='scan'?'掃描':'匯入'} ${idx+1}`;
   showScreen('editorScreen');
@@ -1871,8 +1877,15 @@ function updateSize(v) {
 }
 
 function saveHist() {
-  if (st.history.length > 40) st.history.shift();
+  if (st.history.length > 10) st.history.shift();
   st.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  // 同步更新快取的 offscreen canvas（橡皮擦使用 history[0]）
+  if (!st.eraseCanvas || st.eraseCanvas.width !== canvas.width || st.eraseCanvas.height !== canvas.height) {
+    st.eraseCanvas = document.createElement('canvas');
+    st.eraseCanvas.width  = canvas.width;
+    st.eraseCanvas.height = canvas.height;
+  }
+  st.eraseCanvas.getContext('2d').putImageData(st.history[0], 0, 0);
 }
 function restoreLast() {
   if (st.history.length > 0)
@@ -2166,9 +2179,9 @@ async function confirmPersp() {
   const tmpSrc = document.createElement('canvas');
   tmpSrc.width = canvas.width; tmpSrc.height = canvas.height;
   tmpSrc.getContext('2d').putImageData(clean, 0, 0);
-  document.getElementById('loadingMsg').textContent = '透視矯正中...';
+  document.getElementById('loadingMsg').textContent = '透視矯正中，請稍候…';
   document.getElementById('loadingOverlay').classList.add('show');
-  await new Promise(r => setTimeout(r, 30));
+  await new Promise(r => setTimeout(r, 80));  // 給瀏覽器時間先渲染 loading 畫面
   const result = perspWarp(tmpSrc, st.perspHandles);
   document.getElementById('loadingOverlay').classList.remove('show');
   if (!result) { showToast('矯正失敗，請重新選取四個角點', true); return; }
@@ -2260,11 +2273,12 @@ async function saveAll() {
     } catch(err) { if (err.name === 'AbortError') return; }
   }
   for (const [idx, url] of urls.entries()) {
+    showToast(`下載中 ${idx+1} / ${urls.length}…`);
     const a = document.createElement('a');
     a.href = url; a.download = `scan_${idx+1}.jpg`; a.click();
     await new Promise(r => setTimeout(r, 300));
   }
-  showToast(`已下載 ${all.length} 張 JPG`);
+  showToast(`已下載 ${all.length} 張 JPG ✓`);
 }
 
 async function saveOnePhoto(url, fname) {
