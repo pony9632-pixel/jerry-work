@@ -428,6 +428,36 @@ button{-webkit-appearance:none;font-family:inherit}
 .id-visible{display:inline-flex;align-items:center;justify-content:center;
   font-size:20px;font-weight:800;color:var(--ink);width:18px;height:26px;letter-spacing:0}
 
+/* ─── 懸浮資料面板 ─── */
+.float-panel{position:fixed;z-index:9990;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-radius:22px;padding:0;width:260px;
+  box-shadow:0 12px 40px rgba(14,37,71,.22),0 2px 8px rgba(14,37,71,.10);
+  border:1.5px solid rgba(255,255,255,.9);
+  display:none;user-select:none;-webkit-user-select:none;touch-action:none}
+.float-panel.visible{display:block}
+.float-header{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px 10px;cursor:grab;border-bottom:1px solid var(--line)}
+.float-header:active{cursor:grabbing}
+.float-name{font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:6px}
+.float-close{width:24px;height:24px;border-radius:50%;border:none;background:var(--surf3);
+  color:var(--ink2);font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}
+.float-body{padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px}
+.float-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.float-row-label{font-size:10px;font-weight:700;color:var(--ink3);flex-shrink:0;width:48px}
+.float-row-val{font-size:14px;font-weight:800;color:var(--ink);flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.float-row-val.mono{font-size:16px;letter-spacing:.04em;color:var(--main)}
+.float-copy{border:none;background:var(--main);color:#fff;
+  font-size:11px;font-weight:700;font-family:inherit;
+  padding:5px 12px;border-radius:999px;cursor:pointer;flex-shrink:0;white-space:nowrap}
+.float-copy:active{opacity:.7}
+.float-copy.ok{background:#7BE3B4;color:var(--ink)}
+.float-divider{border:none;border-top:1px solid var(--line);margin:2px 0}
+.float-drag-hint{font-size:10px;color:var(--ink3);text-align:center;
+  padding:0 14px 10px;line-height:1.4}
+
 /* ─── Open-URL Modal ─── */
 .url-modal-overlay{position:fixed;inset:0;background:rgba(14,37,71,.45);
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
@@ -470,7 +500,7 @@ button{-webkit-appearance:none;font-family:inherit}
   <div class="nav-bar">
     <div class="nav-title-wrap">
       <div class="nav-greet" id="importGreet">早上好</div>
-      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v2.8</span></div>
+      <div class="nav-title" style="font-size:20px;display:flex;align-items:baseline;gap:8px"><em>STUDIO A</em> 教育價資料製作<span class="ver-badge">v2.9</span></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <span class="nav-sub" id="importDateTime" style="font-size:11px;gap:5px">—</span>
@@ -1274,6 +1304,8 @@ function openWebsiteAndSave() {
     localStorage.setItem(RECORDS_KEY, JSON.stringify(recs));
     renderRecords();
   }
+  // 顯示懸浮資料面板
+  showFloatPanel(surname, id, email);
   // 顯示 Modal：若有信箱則顯示信箱供複製，否則提示未輸入
   const overlay = document.getElementById('urlModalOverlay');
   const urlText = document.getElementById('urlModalUrlText');
@@ -1286,6 +1318,84 @@ function openWebsiteAndSave() {
   copyBtn.style.opacity = email ? '' : '0.4';
   overlay.classList.add('show');
 }
+
+/* ─── 懸浮資料面板 ─── */
+function showFloatPanel(surname, id, email) {
+  const panel = document.getElementById('floatPanel');
+  // 填入資料
+  document.getElementById('fpName').textContent = (surname || '') + (id ? '  ' + id : '') || '（未輸入）';
+  const webVal = computeWebInput(id);
+  const txnVal = computeTxnVisible(id);
+  document.getElementById('fpHqid').textContent  = webVal;
+  document.getElementById('fpEmail').textContent = email || '—';
+  document.getElementById('fpNote').textContent  = id || '—';
+  document.getElementById('fpTxn').textContent   = txnVal;
+  // 交易明細警告時隱藏複製
+  const txnBtn = document.getElementById('fpTxnCopy');
+  const isWarn = !id || idEffLen(id) <= 3;
+  txnBtn.style.display = isWarn ? 'none' : '';
+  // 定位：右下角（避免被 tab bar 擋住）
+  if (!panel.classList.contains('visible')) {
+    panel.style.right  = '16px';
+    panel.style.bottom = '100px';
+    panel.style.left   = 'auto';
+    panel.style.top    = 'auto';
+  }
+  panel.classList.add('visible');
+}
+
+function hideFloatPanel() {
+  document.getElementById('floatPanel').classList.remove('visible');
+}
+
+function fpCopy(elId, btn) {
+  const txt = document.getElementById(elId).textContent;
+  if (!txt || txt === '—') return;
+  navigator.clipboard.writeText(txt).then(() => {
+    showToast('已複製：' + txt);
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('ok'); }, 1500);
+  }).catch(() => showToast('複製失敗'));
+}
+
+// 懸浮面板拖動（支援觸控）
+(function initFloatDrag() {
+  let dragging = false, startX = 0, startY = 0, panelL = 0, panelT = 0;
+  function getPanel() { return document.getElementById('floatPanel'); }
+  function onStart(cx, cy) {
+    const p = getPanel();
+    const r = p.getBoundingClientRect();
+    panelL = r.left; panelT = r.top;
+    startX = cx; startY = cy;
+    dragging = true;
+    p.style.right = 'auto'; p.style.bottom = 'auto';
+    p.style.left = panelL + 'px'; p.style.top = panelT + 'px';
+  }
+  function onMove(cx, cy) {
+    if (!dragging) return;
+    const p = getPanel();
+    const dx = cx - startX, dy = cy - startY;
+    const maxL = window.innerWidth  - p.offsetWidth  - 8;
+    const maxT = window.innerHeight - p.offsetHeight - 8;
+    p.style.left = Math.max(8, Math.min(maxL, panelL + dx)) + 'px';
+    p.style.top  = Math.max(8, Math.min(maxT, panelT + dy)) + 'px';
+  }
+  function onEnd() { dragging = false; }
+  document.addEventListener('DOMContentLoaded', () => {
+    const handle = document.getElementById('floatDragHandle');
+    if (!handle) return;
+    // Touch
+    handle.addEventListener('touchstart', e => { const t=e.touches[0]; onStart(t.clientX,t.clientY); }, {passive:true});
+    handle.addEventListener('touchmove',  e => { e.preventDefault(); const t=e.touches[0]; onMove(t.clientX,t.clientY); }, {passive:false});
+    handle.addEventListener('touchend',   onEnd);
+    // Mouse（桌機預覽用）
+    handle.addEventListener('mousedown',  e => onStart(e.clientX, e.clientY));
+    document.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
+    document.addEventListener('mouseup',   onEnd);
+  });
+})();
 
 function closeUrlModal(e) {
   // 只有點到背景才關閉（不是點到 modal 本身）
@@ -2039,6 +2149,43 @@ renderRecords();
     </div>
 
   </div>
+</div>
+
+<!-- ─── 懸浮資料面板 ─── -->
+<div class="float-panel" id="floatPanel">
+  <div class="float-header" id="floatDragHandle">
+    <div class="float-name">👤 <span id="fpName">—</span></div>
+    <button class="float-close" onclick="hideFloatPanel()">✕</button>
+  </div>
+  <div class="float-body">
+    <!-- HQID（網站輸入） -->
+    <div class="float-row">
+      <div class="float-row-label">HQID</div>
+      <div class="float-row-val mono" id="fpHqid">—</div>
+      <button class="float-copy" onclick="fpCopy('fpHqid',this)">複製</button>
+    </div>
+    <hr class="float-divider">
+    <!-- 電子信箱 -->
+    <div class="float-row">
+      <div class="float-row-label">信箱</div>
+      <div class="float-row-val" id="fpEmail" style="font-size:12px">—</div>
+      <button class="float-copy" onclick="fpCopy('fpEmail',this)">複製</button>
+    </div>
+    <hr class="float-divider">
+    <!-- 備注六 -->
+    <div class="float-row">
+      <div class="float-row-label">備注六</div>
+      <div class="float-row-val mono" id="fpNote">—</div>
+      <button class="float-copy" onclick="fpCopy('fpNote',this)">複製</button>
+    </div>
+    <!-- 交易明細 -->
+    <div class="float-row">
+      <div class="float-row-label">交易明細</div>
+      <div class="float-row-val mono" id="fpTxn">—</div>
+      <button class="float-copy" id="fpTxnCopy" onclick="fpCopy('fpTxn',this)">複製</button>
+    </div>
+  </div>
+  <div class="float-drag-hint">☰ 長按標題列可拖動位置</div>
 </div>
 
 <!-- ─── Open-URL Modal ─── -->
