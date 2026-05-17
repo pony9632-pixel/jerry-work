@@ -1220,8 +1220,15 @@ function openWebsiteAndSave() {
     localStorage.setItem(RECORDS_KEY, JSON.stringify(recs));
     renderRecords();
   }
-  window.open(TARGET_URL, '_blank');
-  showToast('已開啟網站，截圖後回來此 App 繼續操作');
+  // 用隱藏 <a> 強制在外部 Safari 開啟（PWA 環境下 window.open 會留在 WebView）
+  const a = document.createElement('a');
+  a.href = TARGET_URL;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('💡 提示：長按網址列可開啟左右分割');
 }
 
 const RECORDS_KEY = 'scan_client_records';
