@@ -141,16 +141,20 @@ html,body{height:100%;background:var(--bg);color:var(--ink);
 .empty-state p{font-size:14px;line-height:1.6;font-weight:500}
 
 /* ─── FAB ─── */
-.fab{position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 28px);
-  left:50%;transform:translateX(-50%);
-  background:linear-gradient(135deg, var(--main) 0%, var(--accent-light) 100%);
+.fab-row{position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 28px);
+  left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:150}
+.fab{background:linear-gradient(135deg, var(--main) 0%, var(--accent-light) 100%);
   color:#fff;border:none;border-radius:999px;
-  padding:14px 26px;font-size:15px;font-weight:700;cursor:pointer;
+  padding:14px 22px;font-size:15px;font-weight:700;cursor:pointer;
   display:flex;align-items:center;gap:9px;white-space:nowrap;
-  font-family:inherit;letter-spacing:.01em;z-index:150;
+  font-family:inherit;letter-spacing:.01em;
   box-shadow:0 12px 28px rgba(58,141,255,.5), 0 2px 6px rgba(58,141,255,.3)}
-.fab:active{opacity:.92;transform:translateX(-50%) scale(.96)}
+.fab:active{opacity:.92;transform:scale(.96)}
 .fab:disabled{background:var(--surf3);color:var(--ink3);box-shadow:none;cursor:not-allowed}
+.fab-sub{background:rgba(255,255,255,.85);backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);color:var(--main-deep);
+  border:1.5px solid rgba(58,141,255,.25);
+  box-shadow:0 8px 20px rgba(14,37,71,.12)}
 
 /* ─── Camera ─── */
 #cameraScreen{background:#000}
@@ -536,16 +540,26 @@ button{-webkit-appearance:none;font-family:inherit}
           <circle cx="12" cy="13" r="4"/>
         </svg>
       </div>
-      <p>還沒有任何掃描<br>點下方按鈕開拍吧 ✨</p>
+      <p>還沒有照片<br>拍攝或從相簿匯入來開始編輯 ✨</p>
     </div>
   </div>
-  <button class="fab" id="scanFab" onclick="openCamera()">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-      <circle cx="12" cy="13" r="4"/>
-    </svg>
-    拍攝照片
-  </button>
+  <div class="fab-row">
+    <button class="fab fab-sub" onclick="document.getElementById('galleryInput').click()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+      從相簿匯入
+    </button>
+    <button class="fab" id="scanFab" onclick="openCamera()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      拍攝照片
+    </button>
+  </div>
 </div>
 
 <!-- ══ Tab 3: 全部匯出 ══ -->
@@ -748,6 +762,7 @@ button{-webkit-appearance:none;font-family:inherit}
 
 <input type="file" id="fileInput" accept="image/*" multiple capture="environment" onchange="handleCamera(this)">
 <input type="file" id="importInput" accept="image/*" multiple onchange="handleImport(this)">
+<input type="file" id="galleryInput" accept="image/*" multiple onchange="handleGalleryImport(this)" style="display:none">
 
 <div id="loadingOverlay">
   <div class="loading-box">
@@ -1082,6 +1097,23 @@ function handleCamera(input) {
   Array.from(input.files).slice(0, MAX - st.scanned.length).forEach(f => {
     const r = new FileReader();
     r.onload = e => { st.scanned.push({url:e.target.result}); renderScan(); };
+    r.readAsDataURL(f);
+  });
+  input.value = '';
+}
+
+function handleGalleryImport(input) {
+  const slots = MAX - st.scanned.length;
+  if (slots <= 0) { showToast('已達 10 張上限'); input.value = ''; return; }
+  const files = Array.from(input.files).slice(0, slots);
+  let loaded = 0;
+  files.forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      st.scanned.push({ url: e.target.result });
+      loaded++;
+      if (loaded === files.length) { renderScan(); showToast(`已匯入 ${files.length} 張，可進行編輯`); }
+    };
     r.readAsDataURL(f);
   });
   input.value = '';
