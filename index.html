@@ -461,16 +461,28 @@ button{-webkit-appearance:none;font-family:inherit}
   border:1.5px solid rgba(255,255,255,.15);
   display:none;user-select:none;-webkit-user-select:none;touch-action:none}
 .float-panel.visible{display:block}
-.float-header{display:flex;align-items:center;justify-content:space-between;
-  padding:14px 16px 12px;cursor:grab;border-bottom:1px solid rgba(255,255,255,.12);gap:12px}
+.float-header{display:flex;align-items:center;
+  padding:12px 14px 10px;cursor:grab;border-bottom:1px solid rgba(255,255,255,.12);gap:10px}
 .float-header:active{cursor:grabbing}
-.float-name{font-size:14px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px;white-space:nowrap}
-.float-close{width:26px;height:26px;border-radius:50%;border:none;
-  background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);
-  font-size:13px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}
-.float-close:active{background:rgba(255,255,255,.3)}
+/* macOS traffic-light 控制點 */
+.float-dots{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.float-dot{width:16px;height:16px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:900;color:rgba(0,0,0,.55);transition:opacity .15s}
+.float-dot:active{opacity:.7}
+.float-dot.red{background:#FF5F57}
+.float-dot.yellow{background:#FEBC2E}
+.float-dot.green{background:#28C840}
+.float-name{font-size:13px;font-weight:800;color:#fff;display:flex;align-items:center;
+  gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
 .float-body{padding:12px 16px 16px;display:flex;flex-direction:column;gap:10px}
+/* 縮小狀態 */
+.float-panel.minimized .float-body,
+.float-panel.minimized .float-drag-hint,
+.float-panel.minimized .float-header{border-bottom:none}
+.float-panel.minimized .float-body,
+.float-panel.minimized .float-drag-hint{display:none}
+.float-panel.minimized{min-width:unset}
 .float-row{display:flex;align-items:center;gap:12px}
 .float-row-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);
   flex-shrink:0;width:52px;letter-spacing:.04em}
@@ -1689,19 +1701,25 @@ function eraseAt(x, y, size) {
     p.style.top  = Math.max(8, Math.min(maxT, panelT + dy)) + 'px';
   }
   function onEnd() { dragging = false; }
-  // 腳本在 </body> 之前，DOM 已就緒，直接綁定（不需 DOMContentLoaded）
-  const handle = document.getElementById('floatDragHandle');
-  if (handle) {
-    // Touch
+  // floatDragHandle 位於 script 區塊之後的 HTML，須等 DOMContentLoaded
+  document.addEventListener('DOMContentLoaded', () => {
+    const handle = document.getElementById('floatDragHandle');
+    if (!handle) return;
     handle.addEventListener('touchstart', e => { const t=e.touches[0]; onStart(t.clientX,t.clientY); }, {passive:true});
     handle.addEventListener('touchmove',  e => { e.preventDefault(); const t=e.touches[0]; onMove(t.clientX,t.clientY); }, {passive:false});
     handle.addEventListener('touchend',   onEnd);
-    // Mouse（桌機預覽用）
     handle.addEventListener('mousedown',  e => onStart(e.clientX, e.clientY));
     document.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
     document.addEventListener('mouseup',   onEnd);
-  }
+  });
 })();
+
+function toggleMinimizePanel() {
+  document.getElementById('floatPanel').classList.toggle('minimized');
+}
+function expandPanel() {
+  document.getElementById('floatPanel').classList.remove('minimized');
+}
 
 
 const RECORDS_KEY = 'scan_client_records';
@@ -2486,8 +2504,26 @@ renderRecords();
 <!-- ─── 懸浮資料面板 ─── -->
 <div class="float-panel" id="floatPanel">
   <div class="float-header" id="floatDragHandle">
+    <!-- macOS 控制點：紅=關閉 黃=縮小 綠=展開 -->
+    <div class="float-dots">
+      <button class="float-dot red" title="關閉" onclick="hideFloatPanel()">
+        <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <line x1="1.5" y1="1.5" x2="8.5" y2="8.5"/><line x1="8.5" y1="1.5" x2="1.5" y2="8.5"/>
+        </svg>
+      </button>
+      <button class="float-dot yellow" title="縮小" onclick="toggleMinimizePanel()">
+        <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="1.5" y1="5" x2="8.5" y2="5"/>
+        </svg>
+      </button>
+      <button class="float-dot green" title="展開 / 縮小" onclick="expandPanel()">
+        <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <line x1="1.5" y1="8.5" x2="8.5" y2="1.5"/>
+          <polyline points="1.5,3.5 1.5,8.5 6.5,8.5"/>
+        </svg>
+      </button>
+    </div>
     <div class="float-name">👤 <span id="fpName">—</span></div>
-    <button class="float-close" onclick="hideFloatPanel()">✕</button>
   </div>
   <div class="float-body">
     <!-- 姓氏 -->
