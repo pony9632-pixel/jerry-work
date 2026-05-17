@@ -192,7 +192,7 @@ html,body{height:100%;background:var(--bg);color:var(--ink);
   box-shadow:0 4px 10px rgba(14,37,71,.08);font-family:inherit}
 .editor-title{flex:1;text-align:center;font-size:15px;font-weight:700;color:var(--ink)}
 
-.canvas-wrap{flex:1;position:relative;overflow:scroll;
+.canvas-wrap{flex:1;position:relative;overflow:hidden;
   margin:14px 18px;border-radius:24px;
   background:#1a1a2e;
   box-shadow:0 10px 30px rgba(14,37,71,.25);
@@ -915,6 +915,8 @@ const st = {
   perspHandles: [],
   activeHandle: -1,
   stream: null, facing: 'environment',
+  // 縮放狀態
+  fitScale: 1, viewScale: 1, panX: 0, panY: 0,
 };
 
 // ═══════════════════════════════════════════════
@@ -1545,16 +1547,42 @@ function openEditor(src, idx) {
 
 function fitCanvas(imgW, imgH) {
   const wrap = document.getElementById('canvasWrap');
-  const s = Math.min(wrap.clientWidth / imgW, wrap.clientHeight / imgH);
-  canvas.width  = Math.round(imgW * s);
-  canvas.height = Math.round(imgH * s);
-  centerCanvas();
+  // 保持 canvas 原始解析度，只用 CSS scale 縮放顯示
+  canvas.width  = imgW;
+  canvas.height = imgH;
+  canvas.style.transformOrigin = '0 0';
+  const fitS = Math.min(wrap.clientWidth / imgW, wrap.clientHeight / imgH);
+  st.fitScale  = fitS;
+  st.viewScale = fitS;
+  st.panX = 0; st.panY = 0;
+  applyCanvasView();
+}
+
+function applyCanvasView() {
+  const wrap = document.getElementById('canvasWrap');
+  const scale = st.viewScale;
+  const visW  = canvas.width  * scale;
+  const visH  = canvas.height * scale;
+  const wrapW = wrap.clientWidth;
+  const wrapH = wrap.clientHeight;
+  // 置中基礎偏移，加上 panX/Y
+  let l = (wrapW - visW) / 2 + st.panX;
+  let t = (wrapH - visH) / 2 + st.panY;
+  // 縮放時限制不超出邊界
+  if (visW > wrapW) { l = Math.min(0, Math.max(wrapW - visW, l)); }
+  else              { l = (wrapW - visW) / 2; }
+  if (visH > wrapH) { t = Math.min(0, Math.max(wrapH - visH, t)); }
+  else              { t = (wrapH - visH) / 2; }
+  st.panX = l - (wrapW - visW) / 2;
+  st.panY = t - (wrapH - visH) / 2;
+  canvas.style.left      = l + 'px';
+  canvas.style.top       = t + 'px';
+  canvas.style.transform = `scale(${scale})`;
 }
 
 function centerCanvas() {
-  const wrap = document.getElementById('canvasWrap');
-  canvas.style.left = `${(wrap.clientWidth  - canvas.width)  / 2}px`;
-  canvas.style.top  = `${(wrap.clientHeight - canvas.height) / 2}px`;
+  st.panX = 0; st.panY = 0;
+  applyCanvasView();
 }
 
 function closeEditor() {
@@ -1719,83 +1747,88 @@ canvas.addEventListener('pointerleave', () => {
   if (st.tool === 'persp') st.activeHandle = -1;
 });
 
-// ─── 雙指縮放（Pinch-to-zoom）───
+// ─── 雙指縮放 + 單指拖移（縮放時）───
 (function initPinchZoom() {
   const wrap = document.getElementById('canvasWrap');
-  let pinching = false;
-  let startDist = 0;
-  let startW = 0, startH = 0;
-  let startMidX = 0, startMidY = 0;
+  let pinching  = false;
+  let panning   = false;  // 縮放後單指拖移
+  let startDist = 0, startScale = 1;
+  let startMid  = { x: 0, y: 0 };
+  let startPan  = { x: 0, y: 0 };
+  let panStart  = { x: 0, y: 0 };
 
-  function getTouchDist(t) {
-    const dx = t[0].clientX - t[1].clientX;
-    const dy = t[0].clientY - t[1].clientY;
-    return Math.hypot(dx, dy);
-  }
-  function getTouchMid(t) {
-    return {
-      x: (t[0].clientX + t[1].clientX) / 2,
-      y: (t[0].clientY + t[1].clientY) / 2,
-    };
-  }
+  function dist(t)  { return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+  function mid(t)   { return { x:(t[0].clientX+t[1].clientX)/2, y:(t[0].clientY+t[1].clientY)/2 }; }
+  function wrapRect(){ return wrap.getBoundingClientRect(); }
 
   wrap.addEventListener('touchstart', e => {
     if (e.touches.length === 2) {
-      pinching = true;
+      pinching = true; panning = false;
       st.isDrawing = false;
-      startDist = getTouchDist(e.touches);
-      startW = canvas.offsetWidth;
-      startH = canvas.offsetHeight;
-      const mid = getTouchMid(e.touches);
-      startMidX = mid.x;
-      startMidY = mid.y;
+      startDist  = dist(e.touches);
+      startScale = st.viewScale;
+      startMid   = mid(e.touches);
+      startPan   = { x: st.panX, y: st.panY };
       e.preventDefault();
+    } else if (e.touches.length === 1 && st.viewScale > st.fitScale + 0.01) {
+      // 放大狀態下單指拖移畫面
+      panning = true;
+      panStart = { x: e.touches[0].clientX - st.panX, y: e.touches[0].clientY - st.panY };
     }
   }, { passive: false });
 
   wrap.addEventListener('touchmove', e => {
-    if (!pinching || e.touches.length < 2) return;
-    e.preventDefault();
-    const dist = getTouchDist(e.touches);
-    const scale = dist / startDist;
-    // 限制縮放範圍 0.3x ~ 5x（相對原始顯示大小）
-    const newW = Math.max(80, Math.min(startW * scale, canvas.width * 5));
-    const newH = newW * (startH / startW);
-
-    // 計算中心位移，讓縮放以兩指中點為基準
-    const mid = getTouchMid(e.touches);
-    const wRect = wrap.getBoundingClientRect();
-    const pivotX = startMidX - wRect.left;
-    const pivotY = startMidY - wRect.top;
-    const curL = parseFloat(canvas.style.left) || (wrap.clientWidth  - startW) / 2;
-    const curT = parseFloat(canvas.style.top)  || (wrap.clientHeight - startH) / 2;
-    const ratioX = (pivotX - curL) / startW;
-    const ratioY = (pivotY - curT) / startH;
-    const newL = pivotX - ratioX * newW + (mid.x - startMidX);
-    const newT = pivotY - ratioY * newH + (mid.y - startMidY);
-
-    canvas.style.width  = newW + 'px';
-    canvas.style.height = newH + 'px';
-    canvas.style.left   = newL + 'px';
-    canvas.style.top    = newT + 'px';
-    canvas.style.position = 'absolute';
+    if (pinching && e.touches.length === 2) {
+      e.preventDefault();
+      const newScale = Math.max(st.fitScale, Math.min(st.fitScale * 6, startScale * dist(e.touches) / startDist));
+      const curMid   = mid(e.touches);
+      const wRect    = wrapRect();
+      // 兩指中點在 wrap 內的位置
+      const pivotX   = startMid.x - wRect.left;
+      const pivotY   = startMid.y - wRect.top;
+      const wrapW    = wrap.clientWidth, wrapH = wrap.clientHeight;
+      // 縮放前後以兩指中點為錨點計算 pan 偏移
+      const baseL0 = (wrapW - canvas.width  * startScale) / 2 + startPan.x;
+      const baseT0 = (wrapH - canvas.height * startScale) / 2 + startPan.y;
+      const ratioX = (pivotX - baseL0) / (canvas.width  * startScale);
+      const ratioY = (pivotY - baseT0) / (canvas.height * startScale);
+      const visW1  = canvas.width  * newScale;
+      const visH1  = canvas.height * newScale;
+      const newBaseL = (wrapW - visW1) / 2;
+      const newBaseT = (wrapH - visH1) / 2;
+      const newL  = pivotX - ratioX * visW1 + (curMid.x - startMid.x);
+      const newT  = pivotY - ratioY * visH1 + (curMid.y - startMid.y);
+      st.viewScale = newScale;
+      st.panX = newL - newBaseL;
+      st.panY = newT - newBaseT;
+      applyCanvasView();
+    } else if (panning && e.touches.length === 1 && !pinching) {
+      e.preventDefault();
+      st.panX = e.touches[0].clientX - panStart.x;
+      st.panY = e.touches[0].clientY - panStart.y;
+      applyCanvasView();
+    }
   }, { passive: false });
 
   wrap.addEventListener('touchend', e => {
-    if (pinching && e.touches.length < 2) {
-      pinching = false;
+    if (e.touches.length < 2) pinching = false;
+    if (e.touches.length === 0) {
+      panning = false;
+      // 縮放還原最小時自動置中
+      if (st.viewScale <= st.fitScale + 0.01) {
+        st.viewScale = st.fitScale;
+        centerCanvas();
+      }
     }
   });
 
-  // 雙擊還原為適合視窗大小
+  // 雙擊還原置中
   let lastTap = 0;
   wrap.addEventListener('touchend', e => {
     if (e.touches.length > 0) return;
     const now = Date.now();
-    if (now - lastTap < 300) {
-      // 雙擊：還原置中
-      canvas.style.width  = '';
-      canvas.style.height = '';
+    if (now - lastTap < 280) {
+      st.viewScale = st.fitScale;
       centerCanvas();
     }
     lastTap = now;
@@ -2026,9 +2059,10 @@ function rotate90() {
 //  SAVE
 // ═══════════════════════════════════════════════
 function compressCanvas(cvs, maxBytes = 800 * 1024) {
-  let q = 0.96;
+  // 先嘗試 quality=1（最高畫質）
+  let q = 1.0;
   let url = cvs.toDataURL('image/jpeg', q);
-  while (q > 0.4) {
+  while (q > 0.5) {
     const byteLen = Math.round((url.length - 'data:image/jpeg;base64,'.length) * 3 / 4);
     if (byteLen <= maxBytes) break;
     q = Math.round((q - 0.05) * 100) / 100;
