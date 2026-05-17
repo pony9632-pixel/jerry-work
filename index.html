@@ -192,12 +192,12 @@ html,body{height:100%;background:var(--bg);color:var(--ink);
   box-shadow:0 4px 10px rgba(14,37,71,.08);font-family:inherit}
 .editor-title{flex:1;text-align:center;font-size:15px;font-weight:700;color:var(--ink)}
 
-.canvas-wrap{flex:1;position:relative;overflow:hidden;
+.canvas-wrap{flex:1;position:relative;overflow:scroll;
   margin:14px 18px;border-radius:24px;
   background:#1a1a2e;
   box-shadow:0 10px 30px rgba(14,37,71,.25);
   display:flex;align-items:center;justify-content:center;z-index:2}
-#editorCanvas{position:absolute;top:0;left:0;touch-action:none}
+#editorCanvas{position:absolute;touch-action:none}
 
 .editor-bar{margin:0 18px 16px;padding:10px;border-radius:24px;
   background:rgba(255,255,255,.8);backdrop-filter:blur(20px);
@@ -1719,6 +1719,89 @@ canvas.addEventListener('pointerleave', () => {
   if (st.tool === 'persp') st.activeHandle = -1;
 });
 
+// ─── 雙指縮放（Pinch-to-zoom）───
+(function initPinchZoom() {
+  const wrap = document.getElementById('canvasWrap');
+  let pinching = false;
+  let startDist = 0;
+  let startW = 0, startH = 0;
+  let startMidX = 0, startMidY = 0;
+
+  function getTouchDist(t) {
+    const dx = t[0].clientX - t[1].clientX;
+    const dy = t[0].clientY - t[1].clientY;
+    return Math.hypot(dx, dy);
+  }
+  function getTouchMid(t) {
+    return {
+      x: (t[0].clientX + t[1].clientX) / 2,
+      y: (t[0].clientY + t[1].clientY) / 2,
+    };
+  }
+
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      pinching = true;
+      st.isDrawing = false;
+      startDist = getTouchDist(e.touches);
+      startW = canvas.offsetWidth;
+      startH = canvas.offsetHeight;
+      const mid = getTouchMid(e.touches);
+      startMidX = mid.x;
+      startMidY = mid.y;
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  wrap.addEventListener('touchmove', e => {
+    if (!pinching || e.touches.length < 2) return;
+    e.preventDefault();
+    const dist = getTouchDist(e.touches);
+    const scale = dist / startDist;
+    // 限制縮放範圍 0.3x ~ 5x（相對原始顯示大小）
+    const newW = Math.max(80, Math.min(startW * scale, canvas.width * 5));
+    const newH = newW * (startH / startW);
+
+    // 計算中心位移，讓縮放以兩指中點為基準
+    const mid = getTouchMid(e.touches);
+    const wRect = wrap.getBoundingClientRect();
+    const pivotX = startMidX - wRect.left;
+    const pivotY = startMidY - wRect.top;
+    const curL = parseFloat(canvas.style.left) || (wrap.clientWidth  - startW) / 2;
+    const curT = parseFloat(canvas.style.top)  || (wrap.clientHeight - startH) / 2;
+    const ratioX = (pivotX - curL) / startW;
+    const ratioY = (pivotY - curT) / startH;
+    const newL = pivotX - ratioX * newW + (mid.x - startMidX);
+    const newT = pivotY - ratioY * newH + (mid.y - startMidY);
+
+    canvas.style.width  = newW + 'px';
+    canvas.style.height = newH + 'px';
+    canvas.style.left   = newL + 'px';
+    canvas.style.top    = newT + 'px';
+    canvas.style.position = 'absolute';
+  }, { passive: false });
+
+  wrap.addEventListener('touchend', e => {
+    if (pinching && e.touches.length < 2) {
+      pinching = false;
+    }
+  });
+
+  // 雙擊還原為適合視窗大小
+  let lastTap = 0;
+  wrap.addEventListener('touchend', e => {
+    if (e.touches.length > 0) return;
+    const now = Date.now();
+    if (now - lastTap < 300) {
+      // 雙擊：還原置中
+      canvas.style.width  = '';
+      canvas.style.height = '';
+      centerCanvas();
+    }
+    lastTap = now;
+  });
+})();
+
 function clampToCanvas(p) {
   return { x: Math.max(0, Math.min(canvas.width,  p.x)),
            y: Math.max(0, Math.min(canvas.height, p.y)) };
@@ -1942,13 +2025,13 @@ function rotate90() {
 // ═══════════════════════════════════════════════
 //  SAVE
 // ═══════════════════════════════════════════════
-function compressCanvas(cvs, maxBytes = 500 * 1024) {
-  let q = 0.92;
+function compressCanvas(cvs, maxBytes = 800 * 1024) {
+  let q = 0.96;
   let url = cvs.toDataURL('image/jpeg', q);
-  while (q > 0.3) {
+  while (q > 0.4) {
     const byteLen = Math.round((url.length - 'data:image/jpeg;base64,'.length) * 3 / 4);
     if (byteLen <= maxBytes) break;
-    q = Math.round((q - 0.1) * 10) / 10;
+    q = Math.round((q - 0.05) * 100) / 100;
     url = cvs.toDataURL('image/jpeg', q);
   }
   return url;
